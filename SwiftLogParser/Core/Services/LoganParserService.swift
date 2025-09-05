@@ -1,5 +1,5 @@
 //
-//  logan_parser_service.swift
+//  LoganParserService.swift
 //  SwiftLogParser
 //
 //  Created by zhubiao on 2025/9/5.
@@ -32,6 +32,7 @@ class LoganParserService: ObservableObject {
         do {
             // 读取文件数据
             let fileData = try Data(contentsOf: url)
+            Logger.info("文件大小: \(fileData.count) 字节", category: Logger.parser)
             await updateProgress(0.1)
             
             // 解析 Logan 文件
@@ -83,11 +84,21 @@ class LoganParserService: ObservableObject {
         }
     }
     
-    // 解析 Logan 文件格式
+    // 解析 Logan 文件格式 - 参考 Dart 代码逻辑
     private func parseLoganFile(data: Data) async throws -> String {
         var offset = 0
         var decryptedContent = ""
         let totalBytes = data.count
+        var processedBlocks = 0
+        var failedBlocks = 0
+        
+        Logger.info("开始解析文件，总大小: \(totalBytes) 字节", category: Logger.parser)
+        
+        // 如果文件太小，直接返回错误
+        guard totalBytes > 5 else {
+            Logger.error("文件太小，无法解析 Logan 格式", category: Logger.parser)
+            throw LoganParseError.invalidFileFormat
+        }
         
         while offset < data.count {
             // 更新进度
@@ -106,70 +117,112 @@ class LoganParserService: ObservableObject {
             offset += 1  // 跳过标识符
             
             // 读取加密内容长度（4字节，大端序）
-            guard offset + 4 <= data.count else { break }
-            let lengthBytes = data.subdata(in: offset..<offset+4)
-            // 使用无对齐方式解析为大端 UInt32，避免未对齐内存访问
-            let encryptedLength: UInt32 = lengthBytes.reduce(0) { acc, byte in
-                (acc << 8) | UInt32(byte)
+            guard offset + 4 <= data.count else {
+                Logger.info("文件末尾数据不足4字节，跳过", category: Logger.parser)
+                break
+            }
+            
+            // 使用 ByteData 方式读取大端序 UInt32
+            let encryptedLength = data.withUnsafeBytes { bytes in
+                let pointer = bytes.bindMemory(to: UInt8.self).baseAddress! + offset
+                return UInt32(pointer[0]) << 24 |
+                       UInt32(pointer[1]) << 16 |
+                       UInt32(pointer[2]) << 8 |
+                       UInt32(pointer[3])
             }
             offset += 4
             
+            Logger.debug("找到加密块，长度: \(encryptedLength)", category: Logger.parser)
+            
+            // 验证数据块长度合理性
+            let blockLength = Int(encryptedLength)
+            if blockLength <= 0 || blockLength > data.count - offset {
+                Logger.error("无效的块长度: \(blockLength)，剩余数据: \(data.count - offset)，跳过此块", category: Logger.parser)
+                failedBlocks += 1
+                continue
+            }
+            
             // 提取加密数据块
-            guard offset + Int(encryptedLength) <= data.count else { break }
-            let encryptedData = data.subdata(in: offset..<offset+Int(encryptedLength))
-            offset += Int(encryptedLength)
+            guard offset + blockLength <= data.count else {
+                Logger.error("声明的块长度(\(blockLength))越界，剩余数据: \(data.count - offset)，跳过剩余数据", category: Logger.parser)
+                break
+            }
+            let encryptedData = data.subdata(in: offset..<(offset + blockLength))
+            offset += blockLength
             
             do {
                 // 解密数据块
-                // 更稳健的 AES 解密（尝试多种填充方案）
-                let decryptedData = try decryptAESFlexible(data: encryptedData)
+                let decryptedData = try decryptAES(data: encryptedData)
                 
                 // GZIP 解压缩
-                let decompressedData = try decryptedData.decompressGzipComplete()
+                let decompressedData = try decompressGzip(data: decryptedData)
                 
                 // 转换为字符串
-                if let content = String(data: decompressedData, encoding: .utf8) {
+                let content = convertToString(data: decompressedData)
+                if !content.isEmpty {
                     decryptedContent += content
+                    processedBlocks += 1
+                    Logger.debug("成功处理块 \(processedBlocks)，大小: \(blockLength) 字节，内容长度: \(content.count)", category: Logger.parser)
+                } else {
+                    Logger.debug("块 \(processedBlocks + 1) 解析后内容为空", category: Logger.parser)
                 }
             } catch {
                 // 单个块解析失败，继续处理下一个块
-                Logger.error("处理加密块失败: \(error)", category: Logger.parser)
+                Logger.error("处理加密块失败: \(error.localizedDescription)，块大小: \(blockLength)", category: Logger.parser)
+                failedBlocks += 1
                 continue
             }
         }
         
-        guard !decryptedContent.isEmpty else {
-            throw LoganParseError.emptyResult
+        Logger.info("解析完成，成功处理: \(processedBlocks) 个块，失败: \(failedBlocks) 个块", category: Logger.parser)
+        
+        // 增加更详细的调试信息
+        if decryptedContent.isEmpty {
+            if processedBlocks == 0 && failedBlocks == 0 {
+                Logger.error("未找到任何有效的加密块", category: Logger.parser)
+                throw LoganParseError.invalidFileFormat
+            } else if processedBlocks == 0 {
+                Logger.error("所有块解析失败，可能是密钥错误", category: Logger.parser)
+                throw LoganParseError.decryptionFailed
+            } else {
+                Logger.error("解析到 \(processedBlocks) 个块，但内容为空", category: Logger.parser)
+                throw LoganParseError.emptyResult
+            }
         }
         
         return decryptedContent
     }
     
-    // AES 解密（NoPadding + PKCS7 兜底）
-    private func decryptAESFlexible(data: Data) throws -> Data {
+    // AES 解密 - 参考 Dart 代码的分块解密逻辑
+    private func decryptAES(data: Data) throws -> Data {
         let settings = settingsService.getSettings()
         let keyString = settings.aesKey
         let ivString = settings.aesIv
         
-        let key = keyString.data(using: .utf8)!
-        let iv = ivString.data(using: .utf8)!
-        
-        // 方案 A：AES/CBC/NoPadding，然后手动去 PKCS7
-        do {
-            var dataToDecrypt = data
-            if dataToDecrypt.count % 16 != 0 {
-                let paddedLength = ((dataToDecrypt.count / 16) + 1) * 16
-                var paddedData = Data(count: paddedLength)
-                paddedData.replaceSubrange(0..<dataToDecrypt.count, with: dataToDecrypt)
-                dataToDecrypt = paddedData
-            }
-            let decryptedNoPadding = try decryptAESCBC(data: dataToDecrypt, key: key, iv: iv, options: 0)
-            return decryptedNoPadding.removePKCS7Padding()
-        } catch {
-            // 方案 B：AES/CBC/PKCS7Padding（某些日志可能直接使用 PKCS7 模式）
-            let decryptedWithPKCS7 = try decryptAESCBC(data: data, key: key, iv: iv, options: CCOptions(kCCOptionPKCS7Padding))
-            return decryptedWithPKCS7
+        guard let key = keyString.data(using: .utf8),
+              let iv = ivString.data(using: .utf8) else {
+            throw LoganParseError.decryptionFailed
         }
+        
+        // 确保数据长度是16的倍数（AES块大小）
+        var dataToDecrypt = data
+        if dataToDecrypt.count % 16 != 0 {
+            let paddedLength = ((dataToDecrypt.count / 16) + 1) * 16
+            var paddedData = Data(count: paddedLength)
+            paddedData.replaceSubrange(0..<dataToDecrypt.count, with: dataToDecrypt)
+            dataToDecrypt = paddedData
+        }
+        
+        // 使用 AES/CBC/NoPadding 模式解密
+        let decryptedData = try decryptAESCBC(
+            data: dataToDecrypt,
+            key: key,
+            iv: iv,
+            options: 0
+        )
+        
+        // 手动移除 PKCS7 填充
+        return decryptedData.removePKCS7Padding()
     }
     
     // AES/CBC 解密实现（使用 CommonCrypto）
@@ -208,31 +261,117 @@ class LoganParserService: ObservableObject {
         return cryptData
     }
     
-    // 解析日志内容
+    // GZIP 解压缩 - 改进版本，增加更详细的错误处理和重试机制
+    private func decompressGzip(data: Data) throws -> Data {
+        Logger.debug("开始 GZIP 解压缩，数据大小: \(data.count) 字节",
+                    category: Logger.parser)
+        
+        // 检查数据是否太小
+        guard data.count > 0 else {
+            Logger.error("解压缩数据为空", category: Logger.parser)
+            throw LoganParseError.decompressionFailed
+        }
+        
+        // 输出数据头部用于调试
+        let dataHex = data.prefix(min(16, data.count)).map {
+            String(format: "%02x", $0)
+        }.joined(separator: " ")
+        Logger.debug("解压缩数据头部: \(dataHex)", category: Logger.parser)
+        
+        do {
+            let result = try data.decompressGzipComplete()
+            Logger.debug("GZIP 解压缩成功，输出大小: \(result.count) 字节",
+                        category: Logger.parser)
+            return result
+        } catch {
+            Logger.error("GZIP 解压缩失败: \(error.localizedDescription)",
+                        category: Logger.parser)
+            
+            // 尝试备用解压缩方法
+            Logger.debug("尝试备用解压缩方法", category: Logger.parser)
+            
+            // 方法1: 直接使用 ZLIB
+            do {
+                let result = try data.decompress(using: COMPRESSION_ZLIB)
+                Logger.debug("ZLIB 备用解压缩成功，输出大小: \(result.count) 字节",
+                            category: Logger.parser)
+                return result
+            } catch {
+                Logger.debug("ZLIB 备用解压缩失败: \(error)", category: Logger.parser)
+            }
+            
+            // 方法2: 检查是否为未压缩数据
+            if data.isLikelyUncompressedText() {
+                Logger.debug("数据似乎未压缩，直接返回原数据", category: Logger.parser)
+                return data
+            }
+            
+            // 方法3: 尝试跳过可能的头部数据
+            if data.count > 10 {
+                let trimmedData = data.dropFirst(2) // 跳过前2字节
+                do {
+                    let result = try trimmedData.decompress(using: COMPRESSION_ZLIB)
+                    Logger.debug("跳过头部后解压缩成功，输出大小: \(result.count) 字节",
+                                category: Logger.parser)
+                    return result
+                } catch {
+                    Logger.debug("跳过头部解压缩失败: \(error)", category: Logger.parser)
+                }
+            }
+            
+            throw LoganParseError.decompressionFailed
+        }
+    }
+    
+    // 改进的字符串转换方法
+    private func convertToString(data: Data) -> String {
+        // 尝试 UTF-8 编码
+        if let string = String(data: data, encoding: .utf8) {
+            return string
+        }
+        
+        // 尝试其他编码
+        let encodings: [String.Encoding] = [.utf16, .ascii, .isoLatin1]
+        for encoding in encodings {
+            if let string = String(data: data, encoding: encoding) {
+                Logger.debug("使用 \(encoding) 编码成功转换字符串", category: Logger.parser)
+                return string
+            }
+        }
+        
+        // 使用容错的 UTF-8 解码
+        let string = String(decoding: data, as: UTF8.self)
+        Logger.info("使用容错 UTF-8 解码，可能包含替换字符", category: Logger.parser)
+        return string
+    }
+    
+    // 解析日志内容 - 使用正确的 Logan JSON 字段映射
     private func parseLogContent(_ content: String) -> [LoganLogItem] {
         var logItems: [LoganLogItem] = []
-        let lines = content.components(separatedBy: .newlines)
+        var skippedLines = 0
+        var processedLines = 0
         
-        for line in lines {
-            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmedLine.isEmpty else { continue }
+        Logger.info("开始解析日志内容，总字符数: \(content.count)", category: Logger.parser)
+        
+        // 按行分割内容
+        let lines = content.components(separatedBy: .newlines)
+        Logger.info("分割得到行数: \(lines.count)", category: Logger.parser)
+        
+        for (index, line) in lines.enumerated() {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             
-            do {
-                let jsonData = try JSONSerialization.jsonObject(with: trimmedLine.data(using: .utf8)!)
-                
-                if let jsonDict = jsonData as? [String: Any] {
-                    let logItem = LoganLogItem(
-                        content: jsonDict["c"] as? String ?? "",
-                        flag: jsonDict["f"] as? String ?? "3",
-                        logTime: formatLogTime(jsonDict["l"]),
-                        threadName: jsonDict["n"] as? String ?? "unknown",
-                        threadId: jsonDict["i"] as? String ?? "0",
-                        isMainThread: jsonDict["m"] as? String ?? "false"
-                    )
-                    logItems.append(logItem)
-                }
-            } catch {
-                // 非 JSON 格式，创建简单日志项
+            // 跳过空行但记录数量
+            guard !trimmedLine.isEmpty else {
+                skippedLines += 1
+                continue
+            }
+            
+            // 尝试解析 JSON 格式的日志
+            if let logItem = parseJSONLogLine(trimmedLine, lineNumber: index + 1) {
+                logItems.append(logItem)
+                processedLines += 1
+            } else {
+                // 解析失败，创建纯文本日志项
                 let logItem = LoganLogItem(
                     content: trimmedLine,
                     flag: "3",
@@ -242,13 +381,70 @@ class LoganParserService: ObservableObject {
                     isMainThread: "false"
                 )
                 logItems.append(logItem)
+                processedLines += 1
+                Logger.debug("行 \(index + 1) JSON解析失败，作为纯文本处理", category: Logger.parser)
             }
         }
+        
+        Logger.info("日志解析完成，处理行数: \(processedLines)，跳过空行: \(skippedLines)，总日志条数: \(logItems.count)", category: Logger.parser)
         
         return logItems
     }
     
-    // 时间格式化
+    // 解析 JSON 日志行 - 使用正确的 Logan 字段映射
+    private func parseJSONLogLine(_ line: String, lineNumber: Int) -> LoganLogItem? {
+        // 预处理：移除可能的 BOM 和其他不可见字符
+        let cleanLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\u{FEFF}", with: "") // 移除 BOM
+        
+        // 检查是否看起来像 JSON
+        guard cleanLine.hasPrefix("{") && cleanLine.hasSuffix("}") else {
+            return nil
+        }
+        
+        guard let data = cleanLine.data(using: .utf8) else {
+            Logger.info("行 \(lineNumber) 无法转换为 UTF-8 数据", category: Logger.parser)
+            return nil
+        }
+        
+        do {
+            guard let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                Logger.debug("行 \(lineNumber) JSON 反序列化失败", category: Logger.parser)
+                return nil
+            }
+            
+            // 使用正确的 Logan JSON 字段映射 (c, l, f, n, i, m)
+            let logItem = LoganLogItem(
+                content: extractStringValue(from: jsonObject, key: LoganConstants.JsonFields.content),
+                flag: extractStringValue(from: jsonObject, key: LoganConstants.JsonFields.flag, defaultValue: "3"),
+                logTime: formatLogTime(jsonObject[LoganConstants.JsonFields.logTime]),
+                threadName: extractStringValue(from: jsonObject, key: LoganConstants.JsonFields.threadName, defaultValue: "unknown"),
+                threadId: extractStringValue(from: jsonObject, key: LoganConstants.JsonFields.threadId, defaultValue: "0"),
+                isMainThread: extractStringValue(from: jsonObject, key: LoganConstants.JsonFields.isMainThread, defaultValue: "false")
+            )
+            
+            return logItem
+            
+        } catch {
+            Logger.debug("行 \(lineNumber) JSON 解析异常: \(error.localizedDescription)", category: Logger.parser)
+            return nil
+        }
+    }
+    
+    // 安全提取字符串值的辅助方法
+    private func extractStringValue(from dict: [String: Any], key: String, defaultValue: String = "") -> String {
+        if let value = dict[key] as? String {
+            return value
+        } else if let value = dict[key] as? NSNumber {
+            return value.stringValue
+        } else if let value = dict[key] {
+            return String(describing: value)
+        } else {
+            return defaultValue
+        }
+    }
+    
+    // 时间格式化 - Logan 使用毫秒时间戳
     private func formatLogTime(_ timeValue: Any?) -> String {
         guard let timeValue = timeValue else {
             return Date().iso8601String
@@ -262,6 +458,7 @@ class LoganParserService: ObservableObject {
             timestamp = numberValue.int64Value
         }
         
+        // Logan 使用毫秒时间戳
         let date = Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
         return date.iso8601String
     }
