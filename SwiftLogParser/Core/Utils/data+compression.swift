@@ -11,7 +11,8 @@ import Compression
 extension Data {
     /// GZIP 解压缩
     func decompressGzip() throws -> Data {
-        return try self.decompress(using: COMPRESSION_LZFSE)
+        // 使用更完整的 GZIP 解析（支持 gzip/zlib）
+        return try self.decompressGzipComplete()
     }
     
     /// 使用指定算法解压缩数据
@@ -84,37 +85,51 @@ extension Data {
 extension Data {
     /// 更完整的 GZIP 解压缩实现
     func decompressGzipComplete() throws -> Data {
-        // 检查 GZIP 头部
-        guard count >= 10 else {
-            throw LoganParseError.decompressionFailed
-        }
-        
-        // GZIP 魔数检查
-        guard self[0] == 0x1f && self[1] == 0x8b else {
-            // 如果不是标准 GZIP 格式，尝试 zlib 解压
-            return try decompressZlib()
-        }
-        
-        return try self.withUnsafeBytes { bytes in
-            let srcPtr = bytes.bindMemory(to: UInt8.self).baseAddress!
-            let srcSize = count
-            
-            // 分配输出缓冲区
-            let dstCapacity = srcSize * 4
-            let dstPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: dstCapacity)
-            defer { dstPtr.deallocate() }
-            
-            let decompressedSize = compression_decode_buffer(
-                dstPtr, dstCapacity,
-                srcPtr, srcSize,
-                nil, COMPRESSION_LZFSE
-            )
-            
-            guard decompressedSize > 0 else {
-                throw LoganParseError.decompressionFailed
+        // 长度校验
+        guard count > 0 else { throw LoganParseError.decompressionFailed }
+
+        // 如果是 GZIP magic，则解析头部，提取 deflate 有效负载再解压
+        if self.count >= 10 && self[0] == 0x1f && self[1] == 0x8b {
+            // 仅支持 CM=8 (deflate)
+            guard self[2] == 0x08 else { throw LoganParseError.decompressionFailed }
+
+            var index = 10 // 固定头部长度
+            let flg = self[3]
+
+            // FEXTRA
+            if (flg & 0x04) != 0 {
+                guard index + 2 <= count else { throw LoganParseError.decompressionFailed }
+                let xlen = Int(self[index]) | (Int(self[index + 1]) << 8)
+                index += 2 + xlen
             }
-            
-            return Data(bytes: dstPtr, count: decompressedSize)
+
+            // FNAME (以 0 结尾)
+            if (flg & 0x08) != 0 {
+                while index < count && self[index] != 0 { index += 1 }
+                index += 1
+            }
+
+            // FCOMMENT (以 0 结尾)
+            if (flg & 0x10) != 0 {
+                while index < count && self[index] != 0 { index += 1 }
+                index += 1
+            }
+
+            // FHCRC
+            if (flg & 0x02) != 0 {
+                index += 2
+            }
+
+            // 数据区 [index, count-8)
+            guard index < count - 8 else { throw LoganParseError.decompressionFailed }
+            let payload = self.subdata(in: index..<(count - 8))
+            return try payload.withUnsafeBytes { _ in
+                // 使用 zlib 解码 deflate 数据
+                return try payload.decompress(using: COMPRESSION_ZLIB)
+            }
+        } else {
+            // 非 GZIP，则尝试按 zlib 流解压
+            return try decompressZlib()
         }
     }
     
@@ -123,21 +138,34 @@ extension Data {
         return try self.withUnsafeBytes { bytes in
             let srcPtr = bytes.bindMemory(to: UInt8.self).baseAddress!
             let srcSize = count
-            
-            let dstCapacity = srcSize * 4
-            let dstPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: dstCapacity)
+
+            // 采用动态扩容策略，避免输出缓冲区不足
+            var dstCapacity = Swift.max(1024, srcSize * 4)
+            var dstPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: dstCapacity)
             defer { dstPtr.deallocate() }
-            
-            let decompressedSize = compression_decode_buffer(
+
+            var decompressedSize = compression_decode_buffer(
                 dstPtr, dstCapacity,
                 srcPtr, srcSize,
                 nil, COMPRESSION_ZLIB
             )
-            
+
+            if decompressedSize == 0 {
+                // 尝试扩大缓冲区再解一次
+                dstPtr.deallocate()
+                dstCapacity = srcSize * 8
+                dstPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: dstCapacity)
+                decompressedSize = compression_decode_buffer(
+                    dstPtr, dstCapacity,
+                    srcPtr, srcSize,
+                    nil, COMPRESSION_ZLIB
+                )
+            }
+
             guard decompressedSize > 0 else {
                 throw LoganParseError.decompressionFailed
             }
-            
+
             return Data(bytes: dstPtr, count: decompressedSize)
         }
     }

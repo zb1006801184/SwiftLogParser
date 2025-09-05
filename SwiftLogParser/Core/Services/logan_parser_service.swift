@@ -108,8 +108,9 @@ class LoganParserService: ObservableObject {
             // 读取加密内容长度（4字节，大端序）
             guard offset + 4 <= data.count else { break }
             let lengthBytes = data.subdata(in: offset..<offset+4)
-            let encryptedLength = lengthBytes.withUnsafeBytes { bytes in
-                bytes.load(as: UInt32.self).bigEndian
+            // 使用无对齐方式解析为大端 UInt32，避免未对齐内存访问
+            let encryptedLength: UInt32 = lengthBytes.reduce(0) { acc, byte in
+                (acc << 8) | UInt32(byte)
             }
             offset += 4
             
@@ -120,7 +121,8 @@ class LoganParserService: ObservableObject {
             
             do {
                 // 解密数据块
-                let decryptedData = try decryptAES(data: encryptedData)
+                // 更稳健的 AES 解密（尝试多种填充方案）
+                let decryptedData = try decryptAESFlexible(data: encryptedData)
                 
                 // GZIP 解压缩
                 let decompressedData = try decryptedData.decompressGzipComplete()
@@ -143,8 +145,8 @@ class LoganParserService: ObservableObject {
         return decryptedContent
     }
     
-    // AES 解密
-    private func decryptAES(data: Data) throws -> Data {
+    // AES 解密（NoPadding + PKCS7 兜底）
+    private func decryptAESFlexible(data: Data) throws -> Data {
         let settings = settingsService.getSettings()
         let keyString = settings.aesKey
         let ivString = settings.aesIv
@@ -152,31 +154,32 @@ class LoganParserService: ObservableObject {
         let key = keyString.data(using: .utf8)!
         let iv = ivString.data(using: .utf8)!
         
-        // 确保数据长度是16的倍数
-        var dataToDecrypt = data
-        if dataToDecrypt.count % 16 != 0 {
-            let paddedLength = ((dataToDecrypt.count / 16) + 1) * 16
-            var paddedData = Data(count: paddedLength)
-            paddedData.replaceSubrange(0..<dataToDecrypt.count, with: dataToDecrypt)
-            dataToDecrypt = paddedData
+        // 方案 A：AES/CBC/NoPadding，然后手动去 PKCS7
+        do {
+            var dataToDecrypt = data
+            if dataToDecrypt.count % 16 != 0 {
+                let paddedLength = ((dataToDecrypt.count / 16) + 1) * 16
+                var paddedData = Data(count: paddedLength)
+                paddedData.replaceSubrange(0..<dataToDecrypt.count, with: dataToDecrypt)
+                dataToDecrypt = paddedData
+            }
+            let decryptedNoPadding = try decryptAESCBC(data: dataToDecrypt, key: key, iv: iv, options: 0)
+            return decryptedNoPadding.removePKCS7Padding()
+        } catch {
+            // 方案 B：AES/CBC/PKCS7Padding（某些日志可能直接使用 PKCS7 模式）
+            let decryptedWithPKCS7 = try decryptAESCBC(data: data, key: key, iv: iv, options: CCOptions(kCCOptionPKCS7Padding))
+            return decryptedWithPKCS7
         }
-        
-        // 使用 CommonCrypto 进行 AES/CBC 解密
-        let decryptedData = try decryptAESCBC(data: dataToDecrypt, key: key, iv: iv)
-        
-        // 移除 PKCS7 填充
-        return decryptedData.removePKCS7Padding()
     }
     
     // AES/CBC 解密实现（使用 CommonCrypto）
-    private func decryptAESCBC(data: Data, key: Data, iv: Data) throws -> Data {
+    private func decryptAESCBC(data: Data, key: Data, iv: Data, options: CCOptions) throws -> Data {
         let cryptLength = size_t(data.count + kCCBlockSizeAES128)
         var cryptData = Data(count: cryptLength)
         
         let keyLength = size_t(kCCKeySizeAES128)
         let operation: CCOperation = UInt32(kCCDecrypt)
         let algorithm: CCAlgorithm = UInt32(kCCAlgorithmAES128)
-        let options: CCOptions = 0 // NoPadding
         
         var numBytesDecrypted: size_t = 0
         

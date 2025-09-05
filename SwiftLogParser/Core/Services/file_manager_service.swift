@@ -11,23 +11,32 @@ import AppKit
 class FileManagerService: ObservableObject {
     private let fileManager = FileManager.default
     
-    // 获取桌面路径
-    private var desktopURL: URL {
-        return fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first!
+    // 获取沙盒可写目录: Application Support/<bundleId>/log
+    private var appSupportLogURL: URL {
+        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let bundleId = Bundle.main.bundleIdentifier ?? "SwiftLogParser"
+        let dir = base.appendingPathComponent(bundleId).appendingPathComponent("log")
+        // 确保存在
+        try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
     }
     
-    // 生成 JSON 文件
+    // 生成 JSON 文件（优先写入沙盒，可选回退为保存面板）
     func generateJsonFile(logItems: [LoganLogItem], originalFileName: String) async throws {
         let jsonData = try JSONEncoder().encode(logItems)
-        
-        let fileName = originalFileName.replacingOccurrences(of: ".log", with: "_parsed.json")
-        let outputURL = desktopURL.appendingPathComponent(fileName)
-        
-        try jsonData.write(to: outputURL)
-        Logger.info("JSON 文件已生成: \(outputURL.path)", category: Logger.fileManager)
+        let baseName = (originalFileName as NSString).deletingPathExtension
+        let fileName = "\(baseName)_parsed.json"
+        let outputURL = appSupportLogURL.appendingPathComponent(fileName)
+        do {
+            try jsonData.write(to: outputURL, options: .atomic)
+            Logger.info("JSON 文件已生成: \(outputURL.path)", category: Logger.fileManager)
+        } catch {
+            Logger.error("写入沙盒失败，尝试保存面板: \(error)", category: Logger.fileManager)
+            _ = saveFile(content: jsonData, defaultName: fileName, allowedTypes: ["json"]) // 忽略返回即可
+        }
     }
     
-    // 导出日志为文本文件
+    // 导出日志为文本文件（优先写入沙盒）
     func exportAsTextFile(logItems: [LoganLogItem], originalFileName: String) async throws {
         var textContent = ""
         
@@ -40,11 +49,16 @@ class FileManagerService: ObservableObject {
             textContent += "[\(timeStr)] [\(typeStr)] [\(threadStr)] \(contentStr)\n"
         }
         
-        let fileName = originalFileName.replacingOccurrences(of: ".log", with: "_exported.txt")
-        let outputURL = desktopURL.appendingPathComponent(fileName)
-        
-        try textContent.write(to: outputURL, atomically: true, encoding: .utf8)
-        Logger.info("文本文件已导出: \(outputURL.path)", category: Logger.fileManager)
+        let baseName = (originalFileName as NSString).deletingPathExtension
+        let fileName = "\(baseName)_exported.txt"
+        let outputURL = appSupportLogURL.appendingPathComponent(fileName)
+        do {
+            try textContent.write(to: outputURL, atomically: true, encoding: .utf8)
+            Logger.info("文本文件已导出: \(outputURL.path)", category: Logger.fileManager)
+        } catch {
+            Logger.error("写入沙盒失败，尝试保存面板: \(error)", category: Logger.fileManager)
+            _ = saveFile(content: textContent.data(using: .utf8)!, defaultName: fileName, allowedTypes: ["txt"]) 
+        }
     }
     
     // 打开文件选择器
@@ -68,6 +82,7 @@ class FileManagerService: ObservableObject {
         let panel = NSSavePanel()
         panel.title = "保存文件"
         panel.nameFieldStringValue = defaultName
+        panel.allowedFileTypes = allowedTypes
         
         if panel.runModal() == .OK {
             do {
