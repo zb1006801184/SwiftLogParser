@@ -43,28 +43,95 @@ enum LoganParseError: Error, LocalizedError {
 
 // MARK: - Data 扩展方法
 extension Data {
-    /// GZIP 解压缩（与 Dart 版本一致，只使用标准 GZIP）
+    /// GZIP 解压缩（手动解析GZIP格式，提取deflate数据）
     func decompressGzipComplete() throws -> Data {
-        // 使用标准 GZIP 解压缩，与 Dart 的 GZipDecoder 一致
-        return try self.withUnsafeBytes { bytes in
-            let buffer = UnsafeBufferPointer<UInt8>(start: bytes.bindMemory(to: UInt8.self).baseAddress, count: count)
-            let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: count * 8)
-            defer { destinationBuffer.deallocate() }
+        print("开始GZIP解压缩，数据大小: \(count)")
+        print("数据头部: \(prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
+        
+        // 验证GZIP魔数
+        guard count >= 10 && self[0] == 0x1f && self[1] == 0x8b else {
+            print("不是有效的GZIP格式")
+            throw LoganParseError.decompressionFailed
+        }
+        
+        // 解析GZIP头部，跳过到deflate数据
+        var offset = 10 // 基本头部长度
+        
+        // 检查标志位（第4字节）
+        let flags = self[3]
+        print("GZIP标志位: 0x\(String(format: "%02x", flags))")
+        
+        // 跳过额外字段
+        if (flags & 0x04) != 0 { // FEXTRA
+            guard offset + 2 <= count else { throw LoganParseError.decompressionFailed }
+            let extraLen = Int(self[offset]) + (Int(self[offset + 1]) << 8)
+            offset += 2 + extraLen
+        }
+        
+        // 跳过原始文件名
+        if (flags & 0x08) != 0 { // FNAME
+            while offset < count && self[offset] != 0 {
+                offset += 1
+            }
+            offset += 1 // 跳过null终止符
+        }
+        
+        // 跳过注释
+        if (flags & 0x10) != 0 { // FCOMMENT
+            while offset < count && self[offset] != 0 {
+                offset += 1
+            }
+            offset += 1 // 跳过null终止符
+        }
+        
+        // 跳过CRC16
+        if (flags & 0x02) != 0 { // FHCRC
+            offset += 2
+        }
+        
+        print("GZIP头部长度: \(offset), deflate数据长度: \(count - offset - 8)")
+        
+        // 提取deflate数据（去掉头部和尾部8字节的CRC32+ISIZE）
+        guard offset + 8 < count else {
+            print("GZIP数据太短，无法包含deflate数据")
+            throw LoganParseError.decompressionFailed
+        }
+        
+        let deflateData = self.subdata(in: offset..<(count - 8))
+        print("提取deflate数据，大小: \(deflateData.count)")
+        print("deflate数据头部: \(deflateData.prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
+        
+        // 使用COMPRESSION_ZLIB解压deflate数据
+        return try deflateData.withUnsafeBytes { bytes in
+            let buffer = UnsafeBufferPointer<UInt8>(start: bytes.bindMemory(to: UInt8.self).baseAddress, count: deflateData.count)
             
-            let decompressedSize = compression_decode_buffer(
-                destinationBuffer, count * 8,
-                buffer.baseAddress!, count,
-                nil, COMPRESSION_ZLIB
-            )
+            // 尝试不同的缓冲区大小
+            let bufferSizes = [deflateData.count * 32, deflateData.count * 16, deflateData.count * 8, deflateData.count * 4, Swift.max(deflateData.count * 2, 64 * 1024)]
             
-            guard decompressedSize > 0 else {
-                throw LoganParseError.decompressionFailed
+            for bufferSize in bufferSizes {
+                let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+                defer { destinationBuffer.deallocate() }
+                
+                print("尝试deflate解压，缓冲区大小: \(bufferSize)")
+                
+                let decompressedSize = compression_decode_buffer(
+                    destinationBuffer, bufferSize,
+                    buffer.baseAddress!, deflateData.count,
+                    nil, COMPRESSION_ZLIB
+                )
+                
+                if decompressedSize > 0 {
+                    print("deflate解压缩成功！缓冲区大小: \(bufferSize), 解压后大小: \(decompressedSize)")
+                    return Data(bytes: destinationBuffer, count: decompressedSize)
+                } else {
+                    print("deflate解压失败，缓冲区大小: \(bufferSize), 错误码: \(decompressedSize)")
+                }
             }
             
-            return Data(bytes: destinationBuffer, count: decompressedSize)
+            print("所有deflate解压缩尝试都失败了")
+            throw LoganParseError.decompressionFailed
         }
     }
-    
     
     /// 移除 PKCS7 填充
     func removePKCS7Padding() -> Data {
@@ -388,58 +455,43 @@ class LoganParserService: ObservableObject {
     private func parseLogContent(_ content: String) -> [LoganLogItem] {
         var logItems: [LoganLogItem] = []
         
-        do {
-            // 按行分割内容
-            let lines = content.components(separatedBy: .newlines)
-            print("开始解析 \(lines.count) 行日志内容")
+        // 按行分割内容
+        let lines = content.components(separatedBy: .newlines)
+        print("开始解析 \(lines.count) 行日志内容")
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedLine.isEmpty else { continue }
             
-            for line in lines {
-                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmedLine.isEmpty else { continue }
+            do {
+                // 尝试解析为 JSON
+                guard let lineData = trimmedLine.data(using: .utf8) else { continue }
+                let jsonData = try JSONSerialization.jsonObject(with: lineData)
                 
-                do {
-                    // 尝试解析为 JSON
-                    guard let lineData = trimmedLine.data(using: .utf8) else { continue }
-                    let jsonData = try JSONSerialization.jsonObject(with: lineData)
-                    
-                    if let jsonDict = jsonData as? [String: Any] {
-                        // 使用正确的 Logan JSON 格式
-                        let logItem = LoganLogItem(
-                            content: (jsonDict["c"] as? CustomStringConvertible)?.description ?? "",
-                            flag: (jsonDict["f"] as? CustomStringConvertible)?.description ?? "3",
-                            logTime: formatLogTime(jsonDict["l"]),
-                            threadName: (jsonDict["n"] as? CustomStringConvertible)?.description ?? "unknown",
-                            threadId: (jsonDict["i"] as? CustomStringConvertible)?.description ?? "0",
-                            isMainThread: (jsonDict["m"] as? CustomStringConvertible)?.description ?? "false"
-                        )
-                        logItems.append(logItem)
-                    }
-                } catch {
-                    // 如果不是 JSON 格式，创建一个简单的日志项
+                if let jsonDict = jsonData as? [String: Any] {
+                    // 使用正确的 Logan JSON 格式
                     let logItem = LoganLogItem(
-                        content: trimmedLine,
-                        flag: "3", // 默认为提示信息
-                        logTime: Date().iso8601String,
-                        threadName: "unknown",
-                        threadId: "0",
-                        isMainThread: "false"
+                        content: (jsonDict["c"] as? CustomStringConvertible)?.description ?? "",
+                        flag: (jsonDict["f"] as? CustomStringConvertible)?.description ?? "3",
+                        logTime: formatLogTime(jsonDict["l"]),
+                        threadName: (jsonDict["n"] as? CustomStringConvertible)?.description ?? "unknown",
+                        threadId: (jsonDict["i"] as? CustomStringConvertible)?.description ?? "0",
+                        isMainThread: (jsonDict["m"] as? CustomStringConvertible)?.description ?? "false"
                     )
                     logItems.append(logItem)
                 }
+            } catch {
+                // 如果不是 JSON 格式，创建一个简单的日志项
+                let logItem = LoganLogItem(
+                    content: trimmedLine,
+                    flag: "3", // 默认为提示信息
+                    logTime: Date().iso8601String,
+                    threadName: "unknown",
+                    threadId: "0",
+                    isMainThread: "false"
+                )
+                logItems.append(logItem)
             }
-        } catch {
-            print("解析日志内容失败: \(error)")
-            
-            // 如果解析失败，将整个内容作为一条日志（与 Dart 版本一致）
-            let logItem = LoganLogItem(
-                content: content,
-                flag: "4", // 错误信息
-                logTime: Date().iso8601String,
-                threadName: "parser",
-                threadId: "0",
-                isMainThread: "false"
-            )
-            logItems.append(logItem)
         }
         
         return logItems
@@ -451,27 +503,22 @@ class LoganParserService: ObservableObject {
             return Date().iso8601String
         }
         
-        do {
-            var timestamp: Int64
-            
-            if let stringValue = timeValue as? String {
-                guard let parsedValue = Int64(stringValue) else {
-                    return Date().iso8601String
-                }
-                timestamp = parsedValue
-            } else if let numberValue = timeValue as? NSNumber {
-                timestamp = numberValue.int64Value
-            } else {
+        var timestamp: Int64
+        
+        if let stringValue = timeValue as? String {
+            guard let parsedValue = Int64(stringValue) else {
                 return Date().iso8601String
             }
-            
-            // Logan 使用毫秒时间戳
-            let date = Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
-            return date.iso8601String
-        } catch {
-            print("时间格式化失败: \(error), 原始值: \(timeValue)")
+            timestamp = parsedValue
+        } else if let numberValue = timeValue as? NSNumber {
+            timestamp = numberValue.int64Value
+        } else {
             return Date().iso8601String
         }
+        
+        // Logan 使用毫秒时间戳
+        let date = Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000.0)
+        return date.iso8601String
     }
     
     // 更新进度

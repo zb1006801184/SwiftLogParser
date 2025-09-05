@@ -11,7 +11,7 @@ import SwiftUI
 struct SwiftLogParserApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainView()
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
