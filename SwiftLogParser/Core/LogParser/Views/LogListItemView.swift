@@ -71,15 +71,22 @@ struct LogListItemView: View {
     
     private var formattedTime: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss.SSS"
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        formatter.timeZone = TimeZone.current
         
-        // 尝试解析 logTime 字符串，如果失败则使用当前时间
+        // 首先尝试解析 ISO8601 格式
+        let iso8601Formatter = ISO8601DateFormatter()
+        if let date = iso8601Formatter.date(from: logItem.logTime) {
+            return formatter.string(from: date)
+        }
+        
+        // 如果 ISO8601 解析失败，尝试解析为时间戳
         if let timeInterval = Double(logItem.logTime) {
             return formatter.string(from: Date(timeIntervalSince1970: timeInterval))
-        } else {
-            // 如果 logTime 已经是格式化的字符串，直接返回
-            return logItem.logTime
         }
+        
+        // 如果都解析失败，返回原始字符串
+        return logItem.logTime
     }
     
     private var logTypeText: String {

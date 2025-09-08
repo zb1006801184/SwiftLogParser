@@ -135,14 +135,21 @@ struct LogDetailView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
         formatter.locale = Locale(identifier: "zh_CN")
+        formatter.timeZone = TimeZone.current
         
-        // 使用 logTime 属性而不是 timestamp
+        // 首先尝试解析 ISO8601 格式
+        let iso8601Formatter = ISO8601DateFormatter()
+        if let date = iso8601Formatter.date(from: logItem.logTime) {
+            return formatter.string(from: date)
+        }
+        
+        // 如果 ISO8601 解析失败，尝试解析为时间戳
         if let timeInterval = TimeInterval(logItem.logTime) {
             return formatter.string(from: Date(timeIntervalSince1970: timeInterval))
-        } else {
-            // 如果无法解析时间戳，直接返回原始时间字符串
-            return logItem.logTime
         }
+        
+        // 如果都解析失败，返回原始字符串
+        return logItem.logTime
     }
     
     private var logTypeText: String {
