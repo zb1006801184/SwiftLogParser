@@ -110,7 +110,7 @@ struct LogParserContentView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
-                .frame(width: 120)
+                .frame(width: 160)
                 .onChange(of: selectedLogType) {
                     filterLogs()
                 }
@@ -169,12 +169,7 @@ struct LogParserContentView: View {
             Text("选择日志文件开始解析")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
-            Text("使用菜单栏「文件 > 打开日志文件」或点击下方按钮")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-            
+        
             Button("选择文件") {
                 showFileImporter = true
             }
