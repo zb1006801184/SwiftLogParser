@@ -330,17 +330,6 @@ struct LoganLogItem {
     let isMainThread: String
 }
 
-// MARK: - 解析历史模型
-struct ParseHistory {
-    let filePath: String
-    let fileName: String
-    let parseTime: Date
-    let fileSize: Int
-    let logCount: Int
-    let isSuccess: Bool
-    let errorMessage: String?
-}
-
 // MARK: - 设置服务协议
 protocol SettingsService {
     func getSettings() -> LoganSettings

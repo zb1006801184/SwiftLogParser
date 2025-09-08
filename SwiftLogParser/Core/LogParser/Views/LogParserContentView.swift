@@ -58,7 +58,7 @@ struct LogParserContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(
-            for: .openLogFile
+            for: .fileSelected
         )) { _ in
             showFileImporter = true
         }

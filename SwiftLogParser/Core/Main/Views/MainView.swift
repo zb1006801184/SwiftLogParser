@@ -24,12 +24,12 @@ struct MainView: View {
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 1000, minHeight: 700)
         .onReceive(NotificationCenter.default.publisher(
-            for: .openLogFile
+            for: .fileSelected
         )) { _ in
             showFileImporter = true
         }
         .onReceive(NotificationCenter.default.publisher(
-            for: .showAbout
+            for: .fileSelected
         )) { _ in
             showAbout = true
         }
