@@ -459,13 +459,24 @@ class LoganParserService: ObservableObject {
         let lines = content.components(separatedBy: .newlines)
         print("开始解析 \(lines.count) 行日志内容")
         
+        var jsonSuccessCount = 0
+        var nonJsonCount = 0
+        var emptyLineCount = 0
+        var invalidJsonCount = 0
+        
         for line in lines {
             let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmedLine.isEmpty else { continue }
+            if trimmedLine.isEmpty {
+                emptyLineCount += 1
+                continue
+            }
             
             do {
                 // 尝试解析为 JSON
-                guard let lineData = trimmedLine.data(using: .utf8) else { continue }
+                guard let lineData = trimmedLine.data(using: .utf8) else { 
+                    print("无法转换为UTF8数据: \(trimmedLine.prefix(50))")
+                    continue 
+                }
                 let jsonData = try JSONSerialization.jsonObject(with: lineData)
                 
                 if let jsonDict = jsonData as? [String: Any] {
@@ -479,6 +490,11 @@ class LoganParserService: ObservableObject {
                         isMainThread: (jsonDict["m"] as? CustomStringConvertible)?.description ?? "false"
                     )
                     logItems.append(logItem)
+                    jsonSuccessCount += 1
+                } else {
+                    // JSON解析成功但不是字典类型
+                    print("JSON解析成功但不是字典类型: \(trimmedLine.prefix(100))")
+                    invalidJsonCount += 1
                 }
             } catch {
                 // 如果不是 JSON 格式，创建一个简单的日志项
@@ -491,8 +507,11 @@ class LoganParserService: ObservableObject {
                     isMainThread: "false"
                 )
                 logItems.append(logItem)
+                nonJsonCount += 1
             }
         }
+        
+        print("解析统计: 总行数=\(lines.count), 空行=\(emptyLineCount), JSON成功=\(jsonSuccessCount), 非JSON=\(nonJsonCount), 无效JSON=\(invalidJsonCount), 最终条数=\(logItems.count)")
         
         return logItems
     }
