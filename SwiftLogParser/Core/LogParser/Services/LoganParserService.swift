@@ -423,8 +423,8 @@ class LoganParserService: ObservableObject {
             
             // 记录解析历史
             let history = ParseHistory(
-                filePath: url.path,
-                fileName: url.lastPathComponent,
+                filePath: jsonUrl.path,
+                fileName: jsonUrl.lastPathComponent,
                 parseTime: Date(),
                 fileSize: fileData.count,
                 logCount: logItems.count,

@@ -87,12 +87,17 @@ struct HistoryView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.histories) { history in
-                    HistoryItemView(
-                        history: history,
-                        onDelete: {
-                            viewModel.deleteHistory(id: history.id)
-                        }
-                    )
+                    Button(action: {
+                        openHistory(history)
+                    }) {
+                        HistoryItemView(
+                            history: history,
+                            onDelete: {
+                                viewModel.deleteHistory(id: history.id)
+                            }
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
             .padding(.horizontal, 24)
@@ -119,6 +124,15 @@ struct HistoryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.controlBackgroundColor))
+    }
+    
+    /// 打开历史记录对应的 JSON 文件
+    private func openHistory(_ history: ParseHistory) {
+        // 优先使用 jsonFilePath，其次回退到 filePath
+        let path = history.jsonFilePath ?? history.filePath
+        let url = URL(fileURLWithPath: path)
+        // 在 Finder 中显示并选中文件
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 }
 
