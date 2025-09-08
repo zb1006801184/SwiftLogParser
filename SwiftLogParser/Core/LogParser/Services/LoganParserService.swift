@@ -9,6 +9,7 @@ import Foundation
 import Combine
 import CommonCrypto
 import Compression
+import ZIPFoundation
 
 // MARK: - Logan 常量定义
 struct LoganConstants {
@@ -41,16 +42,105 @@ enum LoganParseError: Error, LocalizedError {
     }
 }
 
+// MARK: - 解压统计信息结构
+struct DecompressionStats {
+    var totalEntries: Int = 0           // 总条目数
+    var invalidFormat: Int = 0          // 无效格式数
+    var decompressionFailed: Int = 0    // 解压失败数
+    var extraFields: Int = 0            // 额外字段数
+    var skipped: Int = 0               // 跳过数
+    var successful: Int = 0            // 成功数
+    
+    /// 打印统计信息
+    func printSummary() {
+        print("=== 解压统计信息 ===")
+        print("总条目数: \(totalEntries)")
+        print("成功解压: \(successful)")
+        print("无效格式: \(invalidFormat)")
+        print("解压失败: \(decompressionFailed)")
+        print("额外字段: \(extraFields)")
+        print("跳过条目: \(skipped)")
+        print("成功率: \(totalEntries > 0 ? String(format: "%.2f%%", Double(successful) / Double(totalEntries) * 100) : "0.00%")")
+        print("==================")
+    }
+}
+
 // MARK: - Data 扩展方法
 extension Data {
-    /// GZIP 解压缩（手动解析GZIP格式，提取deflate数据）
-    func decompressGzipComplete() throws -> Data {
+    /// 使用 ZIPFoundation 进行 GZIP 解压缩
+    func decompressGzipWithZIPFoundation(stats: inout DecompressionStats) throws -> Data {
+        stats.totalEntries += 1
+        print("开始使用 ZIPFoundation 进行 GZIP 解压缩，数据大小: \(count)")
+        print("数据头部: \(prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
+        
+        // 验证 GZIP 魔数
+        guard count >= 10 && self[0] == 0x1f && self[1] == 0x8b else {
+            print("不是有效的GZIP格式")
+            stats.invalidFormat += 1
+            throw LoganParseError.decompressionFailed
+        }
+        
+        do {
+            // 创建临时文件来存储 GZIP 数据
+            let tempDirectory = FileManager.default.temporaryDirectory
+            let tempGzipFile = tempDirectory.appendingPathComponent(UUID().uuidString + ".gz")
+            
+            defer {
+                // 清理临时文件
+                try? FileManager.default.removeItem(at: tempGzipFile)
+            }
+            
+            // 将数据写入临时 GZIP 文件
+            try self.write(to: tempGzipFile)
+            
+            // 使用 ZIPFoundation 解压
+            let archive = try Archive(url: tempGzipFile, accessMode: .read)
+            
+            // 获取第一个条目
+            var firstEntry: Entry?
+            for entry in archive {
+                firstEntry = entry
+                break
+            }
+            
+            guard let entry = firstEntry else {
+                print("GZIP 文件中没有找到条目")
+                stats.decompressionFailed += 1
+                throw LoganParseError.decompressionFailed
+            }
+            
+            print("找到 GZIP 条目: \(entry.path), 压缩大小: \(entry.compressedSize), 原始大小: \(entry.uncompressedSize)")
+            
+            var decompressedData = Data()
+            
+            // 解压数据
+            _ = try archive.extract(entry) { data in
+                decompressedData.append(data)
+            }
+            
+            print("ZIPFoundation 解压缩成功！解压后大小: \(decompressedData.count)")
+            stats.successful += 1
+            return decompressedData
+            
+        } catch {
+            print("ZIPFoundation 解压失败: \(error)")
+            
+            // 如果 ZIPFoundation 失败，回退到原始方法
+            print("回退到原始 GZIP 解压方法")
+            return try decompressGzipComplete(stats: &stats)
+        }
+    }
+    
+    /// GZIP 解压缩（手动解析GZIP格式，提取deflate数据）- 作为备用方法
+    func decompressGzipComplete(stats: inout DecompressionStats) throws -> Data {
+        stats.totalEntries += 1
         print("开始GZIP解压缩，数据大小: \(count)")
         print("数据头部: \(prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
         
         // 验证GZIP魔数
         guard count >= 10 && self[0] == 0x1f && self[1] == 0x8b else {
             print("不是有效的GZIP格式")
+            stats.invalidFormat += 1
             throw LoganParseError.decompressionFailed
         }
         
@@ -63,30 +153,42 @@ extension Data {
         
         // 跳过额外字段
         if (flags & 0x04) != 0 { // FEXTRA
-            guard offset + 2 <= count else { throw LoganParseError.decompressionFailed }
+            guard offset + 2 <= count else {
+                stats.decompressionFailed += 1
+                throw LoganParseError.decompressionFailed
+            }
             let extraLen = Int(self[offset]) + (Int(self[offset + 1]) << 8)
             offset += 2 + extraLen
+            stats.extraFields += 1
+            print("发现额外字段，长度: \(extraLen)")
         }
         
         // 跳过原始文件名
         if (flags & 0x08) != 0 { // FNAME
+            let nameStart = offset
             while offset < count && self[offset] != 0 {
                 offset += 1
             }
             offset += 1 // 跳过null终止符
+            let fileName = String(data: self.subdata(in: nameStart..<(offset-1)), encoding: .utf8) ?? "unknown"
+            print("跳过原始文件名: \(fileName)")
         }
         
         // 跳过注释
         if (flags & 0x10) != 0 { // FCOMMENT
+            let commentStart = offset
             while offset < count && self[offset] != 0 {
                 offset += 1
             }
             offset += 1 // 跳过null终止符
+            let comment = String(data: self.subdata(in: commentStart..<(offset-1)), encoding: .utf8) ?? "unknown"
+            print("跳过注释: \(comment)")
         }
         
         // 跳过CRC16
         if (flags & 0x02) != 0 { // FHCRC
             offset += 2
+            print("跳过CRC16校验")
         }
         
         print("GZIP头部长度: \(offset), deflate数据长度: \(count - offset - 8)")
@@ -94,6 +196,7 @@ extension Data {
         // 提取deflate数据（去掉头部和尾部8字节的CRC32+ISIZE）
         guard offset + 8 < count else {
             print("GZIP数据太短，无法包含deflate数据")
+            stats.decompressionFailed += 1
             throw LoganParseError.decompressionFailed
         }
         
@@ -122,6 +225,7 @@ extension Data {
                 
                 if decompressedSize > 0 {
                     print("deflate解压缩成功！缓冲区大小: \(bufferSize), 解压后大小: \(decompressedSize)")
+                    stats.successful += 1
                     return Data(bytes: destinationBuffer, count: decompressedSize)
                 } else {
                     print("deflate解压失败，缓冲区大小: \(bufferSize), 错误码: \(decompressedSize)")
@@ -129,6 +233,7 @@ extension Data {
             }
             
             print("所有deflate解压缩尝试都失败了")
+            stats.decompressionFailed += 1
             throw LoganParseError.decompressionFailed
         }
     }
@@ -313,6 +418,7 @@ class LoganParserService: ObservableObject {
         var offset = 0
         var decryptedContent = ""
         let totalBytes = data.count
+        var decompressionStats = DecompressionStats()  // 解压统计信息
         
         // 重置计数器
         failedBlockCount = 0
@@ -351,8 +457,8 @@ class LoganParserService: ObservableObject {
                 // 解密数据块
                 let decryptedData = try decryptAES(data: encryptedData)
                 
-                // GZIP 解压缩
-                let decompressedData = try decryptedData.decompressGzipComplete()
+                // 优先使用 ZIPFoundation 进行 GZIP 解压缩
+                let decompressedData = try decryptedData.decompressGzipWithZIPFoundation(stats: &decompressionStats)
                 
                 // 转换为字符串
                 if let content = String(data: decompressedData, encoding: .utf8) {
@@ -381,6 +487,9 @@ class LoganParserService: ObservableObject {
         if failedBlockCount > 0 {
             Logger.error("警告：有 \(failedBlockCount) 个加密块解析失败，可能影响日志完整性", category: Logger.parser)
         }
+        
+        // 打印解压统计信息
+        decompressionStats.printSummary()
         
         return decryptedContent
     }
@@ -511,9 +620,9 @@ class LoganParserService: ObservableObject {
             
             do {
                 // 尝试解析为 JSON
-                guard let lineData = trimmedLine.data(using: .utf8) else { 
+                guard let lineData = trimmedLine.data(using: .utf8) else {
                     print("无法转换为UTF8数据: \(trimmedLine.prefix(50))")
-                    continue 
+                    continue
                 }
                 let jsonData = try JSONSerialization.jsonObject(with: lineData)
                 
