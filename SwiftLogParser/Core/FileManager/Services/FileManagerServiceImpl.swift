@@ -11,7 +11,7 @@ import Foundation
 class FileManagerServiceImpl: FileManagerService {
     /// 生成 JSON 文件
     func generateJsonFile(logItems: [LoganLogItem], 
-                         originalFileName: String) async throws {
+                         originalFileName: String) async throws -> URL {
         // 创建解析结果的数据结构
         let parseResult = [
             "originalFileName": originalFileName,
@@ -59,5 +59,6 @@ class FileManagerServiceImpl: FileManagerService {
         
         Logger.info("JSON 文件已生成(应用文档目录): \(outputUrl.path)", 
                    category: Logger.parser)
+        return outputUrl
     }
 }

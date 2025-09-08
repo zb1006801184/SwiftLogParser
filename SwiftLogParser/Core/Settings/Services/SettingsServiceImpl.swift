@@ -10,6 +10,7 @@ import Foundation
 /// 设置服务实现
 class SettingsServiceImpl: SettingsService {
     private let userDefaults = UserDefaults.standard
+    private let historyService: HistoryServiceProtocol = HistoryService()
     
     /// 获取 Logan 设置
     func getSettings() -> LoganSettings {
@@ -36,7 +37,7 @@ class SettingsServiceImpl: SettingsService {
     
     /// 添加解析历史
     func addParseHistory(_ history: ParseHistory) {
-        // TODO: 可以在这里实现持久化存储
-        print("解析历史已添加: \(history.fileName)")
+        // 写入历史记录到持久化
+        historyService.addHistory(history)
     }
 }

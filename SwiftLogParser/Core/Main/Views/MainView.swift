@@ -243,6 +243,7 @@ struct AboutView: View {
 // MARK: - 扩展通知名称
 extension Notification.Name {
     static let fileSelected = Notification.Name("fileSelected")
+    static let historyUpdated = Notification.Name("historyUpdated")
 }
 
 #Preview {

@@ -27,6 +27,9 @@ struct HistoryView: View {
         .onAppear {
             viewModel.loadHistories()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .historyUpdated)) { _ in
+            viewModel.loadHistories()
+        }
         .alert("清空历史记录", isPresented: $viewModel.showingClearAlert) {
             Button("取消", role: .cancel) { }
             Button("清空", role: .destructive) {

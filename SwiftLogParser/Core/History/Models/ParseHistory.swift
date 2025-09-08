@@ -17,6 +17,7 @@ struct ParseHistory: Identifiable, Codable {
     let logCount: Int
     let isSuccess: Bool
     let errorMessage: String?
+    let jsonFilePath: String?
     
     init(
         id: String = UUID().uuidString,
@@ -26,7 +27,8 @@ struct ParseHistory: Identifiable, Codable {
         fileSize: Int,
         logCount: Int,
         isSuccess: Bool = true,
-        errorMessage: String? = nil
+        errorMessage: String? = nil,
+        jsonFilePath: String? = nil
     ) {
         self.id = id
         self.filePath = filePath
@@ -36,6 +38,7 @@ struct ParseHistory: Identifiable, Codable {
         self.logCount = logCount
         self.isSuccess = isSuccess
         self.errorMessage = errorMessage
+        self.jsonFilePath = jsonFilePath
     }
     
     /// 格式化文件大小

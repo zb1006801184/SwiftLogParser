@@ -339,7 +339,7 @@ protocol SettingsService {
 
 // MARK: - 文件管理服务协议
 protocol FileManagerService {
-    func generateJsonFile(logItems: [LoganLogItem], originalFileName: String) async throws
+    func generateJsonFile(logItems: [LoganLogItem], originalFileName: String) async throws -> URL
 }
 
 // MARK: - Logan 设置模型
@@ -414,8 +414,8 @@ class LoganParserService: ObservableObject {
             let logItems = parseLogContent(decryptedContent)
             await updateProgress(0.9)
             
-            // 生成 JSON 文件
-            try await fileManagerService.generateJsonFile(
+            // 生成 JSON 文件并拿到路径
+            let jsonUrl = try await fileManagerService.generateJsonFile(
                 logItems: logItems,
                 originalFileName: url.lastPathComponent
             )
@@ -429,7 +429,8 @@ class LoganParserService: ObservableObject {
                 fileSize: fileData.count,
                 logCount: logItems.count,
                 isSuccess: true,
-                errorMessage: nil
+                errorMessage: nil,
+                jsonFilePath: jsonUrl.path
             )
             settingsService.addParseHistory(history)
             
@@ -447,7 +448,8 @@ class LoganParserService: ObservableObject {
                 fileSize: 0,
                 logCount: 0,
                 isSuccess: false,
-                errorMessage: error.localizedDescription
+                errorMessage: error.localizedDescription,
+                jsonFilePath: nil
             )
             settingsService.addParseHistory(history)
             
