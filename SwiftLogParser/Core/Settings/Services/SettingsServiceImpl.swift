@@ -10,7 +10,7 @@ import Foundation
 /// 设置服务实现
 class SettingsServiceImpl: SettingsService {
     private let userDefaults = UserDefaults.standard
-    private let historyService: HistoryServiceProtocol = HistoryService()
+    private let historyService: HistoryServiceProtocol = HistoryService.shared
     
     /// 获取 Logan 设置
     func getSettings() -> LoganSettings {

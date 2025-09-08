@@ -17,6 +17,9 @@ protocol HistoryServiceProtocol {
 
 /// 历史记录服务实现
 class HistoryService: HistoryServiceProtocol {
+    // 单例实例，确保全局共享同一份内存数据
+    static let shared = HistoryService()
+
     private var histories: [ParseHistory] = []
     
     private let userDefaults = UserDefaults.standard

@@ -16,7 +16,7 @@ class HistoryViewModel: ObservableObject {
     
     private let historyService: HistoryServiceProtocol
     
-    init(historyService: HistoryServiceProtocol = HistoryService()) {
+    init(historyService: HistoryServiceProtocol = HistoryService.shared) {
         self.historyService = historyService
         loadHistories()
     }
