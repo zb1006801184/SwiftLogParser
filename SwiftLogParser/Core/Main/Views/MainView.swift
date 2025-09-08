@@ -158,15 +158,23 @@ struct ContentAreaView: View {
     let selectedItem: SidebarItem
     
     var body: some View {
-        Group {
-            switch selectedItem {
-            case .logParser:
-                LogParserContentView()
-            case .history:
-                HistoryView()
-            case .settings:
-                SettingsContentView()
-            }
+        // 使用 ZStack 将三个页面同时加入视图树，
+        // 通过透明度与命中测试控制显隐，以保持各页面状态不被重置
+        ZStack {
+            LogParserContentView()
+                .opacity(selectedItem == .logParser ? 1 : 0)
+                .allowsHitTesting(selectedItem == .logParser)
+                .zIndex(selectedItem == .logParser ? 1 : 0)
+            
+            HistoryView()
+                .opacity(selectedItem == .history ? 1 : 0)
+                .allowsHitTesting(selectedItem == .history)
+                .zIndex(selectedItem == .history ? 1 : 0)
+            
+            SettingsContentView()
+                .opacity(selectedItem == .settings ? 1 : 0)
+                .allowsHitTesting(selectedItem == .settings)
+                .zIndex(selectedItem == .settings ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
