@@ -33,6 +33,11 @@ struct MainView: View {
         )) { _ in
             showAbout = true
         }
+        .onReceive(NotificationCenter.default.publisher(
+            for: .navigateToLogParser
+        )) { _ in
+            selectedSidebarItem = .logParser
+        }
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [.data],
@@ -244,6 +249,8 @@ struct AboutView: View {
 extension Notification.Name {
     static let fileSelected = Notification.Name("fileSelected")
     static let historyUpdated = Notification.Name("historyUpdated")
+    static let navigateToLogParser = Notification.Name("navigateToLogParser")
+    static let loadHistoryFile = Notification.Name("loadHistoryFile")
 }
 
 #Preview {

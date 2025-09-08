@@ -62,6 +62,13 @@ struct LogParserContentView: View {
         )) { _ in
             showFileImporter = true
         }
+        .onReceive(NotificationCenter.default.publisher(
+            for: .loadHistoryFile
+        )) { notification in
+            if let history = notification.object as? ParseHistory {
+                loadHistoryFile(history)
+            }
+        }
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [UTType.data],
@@ -276,6 +283,67 @@ struct LogParserContentView: View {
             } catch {
                 await MainActor.run {
                     self.errorMessage = "解析失败: \(error.localizedDescription)"
+                    self.isParseComplete = true
+                    self.logItems = []
+                    self.filteredLogItems = []
+                }
+            }
+        }
+    }
+    
+    /// 加载历史文件
+    private func loadHistoryFile(_ history: ParseHistory) {
+        // 清除当前数据
+        clearCurrentData()
+        
+        // 优先使用 jsonFilePath，其次回退到 filePath
+        let path = history.jsonFilePath ?? history.filePath
+        let url = URL(fileURLWithPath: path)
+        
+        // 加载JSON文件中的日志数据
+        loadLogsFromJSON(at: url)
+    }
+    
+    /// 从JSON文件加载日志数据
+    private func loadLogsFromJSON(at url: URL) {
+        Task {
+            do {
+                let data = try Data(contentsOf: url)
+                
+                // 历史JSON文件的结构为：{ originalFileName, parseTime, logCount, logs: [ {...} ] }
+                struct ExportedLogs: Decodable {
+                    let logs: [LogDTO]
+                }
+                struct LogDTO: Decodable {
+                    let content: String
+                    let flag: String
+                    let logTime: String
+                    let threadName: String
+                    let threadId: String
+                    let isMainThread: String
+                }
+                
+                let exported = try JSONDecoder().decode(ExportedLogs.self, from: data)
+                let items = exported.logs.map { dto in
+                    LoganLogItem(
+                        content: dto.content,
+                        flag: dto.flag,
+                        logTime: dto.logTime,
+                        threadName: dto.threadName,
+                        threadId: dto.threadId,
+                        isMainThread: dto.isMainThread
+                    )
+                }
+                
+                await MainActor.run {
+                    self.logItems = items
+                    self.isParseComplete = true
+                    self.errorMessage = nil
+                    self.filterLogs()
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "加载历史文件失败: \(error.localizedDescription)"
                     self.isParseComplete = true
                     self.logItems = []
                     self.filteredLogItems = []

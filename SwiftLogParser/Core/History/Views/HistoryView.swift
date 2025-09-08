@@ -88,7 +88,8 @@ struct HistoryView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.histories) { history in
                     Button(action: {
-                        openHistory(history)
+                        // 跳转到解析页面并加载历史文件
+                        navigateToLogParser(with: history)
                     }) {
                         HistoryItemView(
                             history: history,
@@ -134,6 +135,15 @@ struct HistoryView: View {
         // 在 Finder 中显示并选中文件
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
+    
+    /// 跳转到解析页面并加载历史文件
+    private func navigateToLogParser(with history: ParseHistory) {
+        // 发送通知切换到解析页面
+        NotificationCenter.default.post(name: .navigateToLogParser, object: nil)
+        
+        // 发送通知加载历史文件
+        NotificationCenter.default.post(name: .loadHistoryFile, object: history)
+    }
 }
 
 // MARK: - 历史记录条目视图
@@ -142,6 +152,15 @@ struct HistoryItemView: View {
     let onDelete: () -> Void
     
     @State private var isHovered = false
+    
+    /// 打开历史记录对应的文件
+    private func openHistoryFile(_ history: ParseHistory) {
+        // 优先使用 jsonFilePath，其次回退到 filePath
+        let path = history.jsonFilePath ?? history.filePath
+        let url = URL(fileURLWithPath: path)
+        // 在 Finder 中显示并选中文件
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -226,11 +245,19 @@ struct HistoryItemView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                 
-                Text(history.filePath)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                Button(action: {
+                    // 执行当前的点击逻辑：在Finder中显示文件
+                    openHistoryFile(history)
+                }) {
+                    Text(history.filePath)
+                        .font(.system(size: 11))
+                        .foregroundColor(.blue)
+                        .underline()
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .buttonStyle(.plain)
+                .help("点击在Finder中显示文件")
             }
             
             // 错误信息（如果有）

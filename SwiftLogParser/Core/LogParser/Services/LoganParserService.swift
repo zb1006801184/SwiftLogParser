@@ -272,14 +272,25 @@ extension Date {
 }
 
 // MARK: - Logan 日志条目模型
-struct LoganLogItem: Identifiable {
-    let id = UUID() // 添加唯一标识符
+struct LoganLogItem: Identifiable, Codable {
+    let id: UUID // 添加唯一标识符
     let content: String
     let flag: String
     let logTime: String
     let threadName: String
     let threadId: String
     let isMainThread: String
+    
+    // 自定义初始化器，自动生成UUID
+    init(content: String, flag: String, logTime: String, threadName: String, threadId: String, isMainThread: String) {
+        self.id = UUID()
+        self.content = content
+        self.flag = flag
+        self.logTime = logTime
+        self.threadName = threadName
+        self.threadId = threadId
+        self.isMainThread = isMainThread
+    }
 }
 
 // MARK: - 设置服务协议
