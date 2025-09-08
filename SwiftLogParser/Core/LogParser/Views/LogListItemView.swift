@@ -62,6 +62,7 @@ struct LogListItemView: View {
                     )
             )
             .cornerRadius(6)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
     }

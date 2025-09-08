@@ -146,6 +146,7 @@ struct SidebarItemRow: View {
                 Color.clear
             )
             .cornerRadius(6)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.horizontal, 8)

@@ -321,7 +321,8 @@ extension Date {
 }
 
 // MARK: - Logan 日志条目模型
-struct LoganLogItem {
+struct LoganLogItem: Identifiable {
+    let id = UUID() // 添加唯一标识符
     let content: String
     let flag: String
     let logTime: String

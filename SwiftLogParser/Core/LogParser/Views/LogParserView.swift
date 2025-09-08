@@ -207,7 +207,7 @@ struct LogParserView: View {
                     .foregroundColor(.secondary)
             }
             
-            List(Array(logItems.prefix(100).enumerated()), id: \.offset) { 
+            List(Array(logItems.prefix(100).enumerated()), id: \.offset) {
                 index, item in
                 LogItemRow(item: item, index: index)
             }
