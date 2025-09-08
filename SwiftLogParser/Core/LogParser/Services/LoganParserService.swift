@@ -2,7 +2,7 @@
 //  logan_parser_service.swift
 //  SwiftLogParser
 //
-//  Created by zhubiao on 2025/9/5.
+//  Created by zhubiao on 2025/9/8.
 //
 
 import Foundation
@@ -44,39 +44,70 @@ enum LoganParseError: Error, LocalizedError {
 
 // MARK: - 解压统计信息结构
 struct DecompressionStats {
-    var totalEntries: Int = 0           // 总条目数
-    var invalidFormat: Int = 0          // 无效格式数
-    var decompressionFailed: Int = 0    // 解压失败数
-    var extraFields: Int = 0            // 额外字段数
-    var skipped: Int = 0               // 跳过数
-    var successful: Int = 0            // 成功数
+    var totalBlocks: Int = 0            // 总加密块数（用作统计基准）
+    var successfulBlocks: Int = 0       // 成功解压的加密块数
+    var failedBlocks: Int = 0          // 解压失败的加密块数
+    var invalidFormatBlocks: Int = 0    // 无效格式的加密块数
+    var zipFoundationSuccess: Int = 0   // ZIPFoundation 成功次数
+    var fallbackSuccess: Int = 0        // 回退方法成功次数
     
     /// 打印统计信息
     func printSummary() {
         print("=== 解压统计信息 ===")
-        print("总条目数: \(totalEntries)")
-        print("成功解压: \(successful)")
-        print("无效格式: \(invalidFormat)")
-        print("解压失败: \(decompressionFailed)")
-        print("额外字段: \(extraFields)")
-        print("跳过条目: \(skipped)")
-        print("成功率: \(totalEntries > 0 ? String(format: "%.2f%%", Double(successful) / Double(totalEntries) * 100) : "0.00%")")
+        print("总条目数: \(totalBlocks)")
+        print("成功解压: \(successfulBlocks)")
+        print("无效格式: \(invalidFormatBlocks)")
+        print("解压失败: \(failedBlocks)")
+        print("额外字段: 0")  // 保持与原输出格式一致
+        print("跳过条目: 0")  // 保持与原输出格式一致
+        
+        let successRate = totalBlocks > 0 ?
+            Double(successfulBlocks) / Double(totalBlocks) * 100 : 0.0
+        print("成功率: \(String(format: "%.2f", successRate))%")
+        
+        print("--- 详细信息 ---")
+        print("ZIPFoundation成功: \(zipFoundationSuccess)")
+        print("回退方法成功: \(fallbackSuccess)")
         print("==================")
+    }
+    
+    /// 记录解压尝试
+    mutating func recordAttempt() {
+        totalBlocks += 1
+    }
+    
+    /// 记录成功（指定使用的方法）
+    mutating func recordSuccess(usingZipFoundation: Bool) {
+        successfulBlocks += 1
+        if usingZipFoundation {
+            zipFoundationSuccess += 1
+        } else {
+            fallbackSuccess += 1
+        }
+    }
+    
+    /// 记录失败
+    mutating func recordFailure() {
+        failedBlocks += 1
+    }
+    
+    /// 记录无效格式
+    mutating func recordInvalidFormat() {
+        invalidFormatBlocks += 1
+        failedBlocks += 1  // 无效格式也算作失败
     }
 }
 
 // MARK: - Data 扩展方法
 extension Data {
     /// 使用 ZIPFoundation 进行 GZIP 解压缩
-    func decompressGzipWithZIPFoundation(stats: inout DecompressionStats) throws -> Data {
-        stats.totalEntries += 1
+    func decompressGzipWithZipFoundation() throws -> (Data, Bool) {
         print("开始使用 ZIPFoundation 进行 GZIP 解压缩，数据大小: \(count)")
         print("数据头部: \(prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
         
         // 验证 GZIP 魔数
         guard count >= 10 && self[0] == 0x1f && self[1] == 0x8b else {
             print("不是有效的GZIP格式")
-            stats.invalidFormat += 1
             throw LoganParseError.decompressionFailed
         }
         
@@ -105,7 +136,6 @@ extension Data {
             
             guard let entry = firstEntry else {
                 print("GZIP 文件中没有找到条目")
-                stats.decompressionFailed += 1
                 throw LoganParseError.decompressionFailed
             }
             
@@ -119,28 +149,22 @@ extension Data {
             }
             
             print("ZIPFoundation 解压缩成功！解压后大小: \(decompressedData.count)")
-            stats.successful += 1
-            return decompressedData
+            return (decompressedData, true)  // 返回数据和成功标志
             
         } catch {
             print("ZIPFoundation 解压失败: \(error)")
-            
-            // 如果 ZIPFoundation 失败，回退到原始方法
-            print("回退到原始 GZIP 解压方法")
-            return try decompressGzipComplete(stats: &stats)
+            throw error
         }
     }
     
-    /// GZIP 解压缩（手动解析GZIP格式，提取deflate数据）- 作为备用方法
-    func decompressGzipComplete(stats: inout DecompressionStats) throws -> Data {
-        stats.totalEntries += 1
-        print("开始GZIP解压缩，数据大小: \(count)")
+    /// GZIP 解压缩（手动解析GZIP格式，提取deflate数据）
+    func decompressGzipManually() throws -> Data {
+        print("开始手动GZIP解压缩，数据大小: \(count)")
         print("数据头部: \(prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
         
         // 验证GZIP魔数
         guard count >= 10 && self[0] == 0x1f && self[1] == 0x8b else {
             print("不是有效的GZIP格式")
-            stats.invalidFormat += 1
             throw LoganParseError.decompressionFailed
         }
         
@@ -154,12 +178,10 @@ extension Data {
         // 跳过额外字段
         if (flags & 0x04) != 0 { // FEXTRA
             guard offset + 2 <= count else {
-                stats.decompressionFailed += 1
                 throw LoganParseError.decompressionFailed
             }
             let extraLen = Int(self[offset]) + (Int(self[offset + 1]) << 8)
             offset += 2 + extraLen
-            stats.extraFields += 1
             print("发现额外字段，长度: \(extraLen)")
         }
         
@@ -196,7 +218,6 @@ extension Data {
         // 提取deflate数据（去掉头部和尾部8字节的CRC32+ISIZE）
         guard offset + 8 < count else {
             print("GZIP数据太短，无法包含deflate数据")
-            stats.decompressionFailed += 1
             throw LoganParseError.decompressionFailed
         }
         
@@ -225,7 +246,6 @@ extension Data {
                 
                 if decompressedSize > 0 {
                     print("deflate解压缩成功！缓冲区大小: \(bufferSize), 解压后大小: \(decompressedSize)")
-                    stats.successful += 1
                     return Data(bytes: destinationBuffer, count: decompressedSize)
                 } else {
                     print("deflate解压失败，缓冲区大小: \(bufferSize), 错误码: \(decompressedSize)")
@@ -233,8 +253,40 @@ extension Data {
             }
             
             print("所有deflate解压缩尝试都失败了")
-            stats.decompressionFailed += 1
             throw LoganParseError.decompressionFailed
+        }
+    }
+    
+    /// 统一的GZIP解压缩方法，带统计信息
+    func decompressGzip(stats: inout DecompressionStats) throws -> Data {
+        // 记录解压尝试
+        stats.recordAttempt()
+        
+        // 首先验证GZIP格式
+        guard count >= 10 && self[0] == 0x1f && self[1] == 0x8b else {
+            print("不是有效的GZIP格式")
+            stats.recordInvalidFormat()
+            throw LoganParseError.decompressionFailed
+        }
+        
+        // 优先尝试 ZIPFoundation
+        do {
+            let (decompressedData, _) = try decompressGzipWithZipFoundation()
+            stats.recordSuccess(usingZipFoundation: true)
+            return decompressedData
+        } catch {
+            print("ZIPFoundation 解压失败，尝试回退方法: \(error)")
+        }
+        
+        // 回退到手动解压方法
+        do {
+            let decompressedData = try decompressGzipManually()
+            stats.recordSuccess(usingZipFoundation: false)
+            return decompressedData
+        } catch {
+            print("手动解压也失败了: \(error)")
+            stats.recordFailure()
+            throw error
         }
     }
     
@@ -457,8 +509,8 @@ class LoganParserService: ObservableObject {
                 // 解密数据块
                 let decryptedData = try decryptAES(data: encryptedData)
                 
-                // 优先使用 ZIPFoundation 进行 GZIP 解压缩
-                let decompressedData = try decryptedData.decompressGzipWithZIPFoundation(stats: &decompressionStats)
+                // 使用新的统一解压方法
+                let decompressedData = try decryptedData.decompressGzip(stats: &decompressionStats)
                 
                 // 转换为字符串
                 if let content = String(data: decompressedData, encoding: .utf8) {
