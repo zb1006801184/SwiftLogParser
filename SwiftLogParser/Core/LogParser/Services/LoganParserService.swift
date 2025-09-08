@@ -221,9 +221,30 @@ class LoganParserService: ObservableObject {
     private let settingsService: SettingsService
     private let fileManagerService: FileManagerService
     
+    // 统计加密块失败数量
+    private var failedBlockCount = 0
+    // 统计加密块成功数量
+    private var successBlockCount = 0
+    
     init(settingsService: SettingsService, fileManagerService: FileManagerService) {
         self.settingsService = settingsService
         self.fileManagerService = fileManagerService
+    }
+    
+    /// 获取最近一次解析中失败的加密块数量
+    func getFailedBlockCount() -> Int {
+        return failedBlockCount
+    }
+    
+    /// 获取最近一次解析中成功的加密块数量
+    func getSuccessBlockCount() -> Int {
+        return successBlockCount
+    }
+    
+    /// 获取最近一次解析的加密块统计信息
+    func getBlockStatistics() -> (success: Int, failed: Int, total: Int) {
+        let total = successBlockCount + failedBlockCount
+        return (success: successBlockCount, failed: failedBlockCount, total: total)
     }
     
     // 主解析方法
@@ -293,6 +314,10 @@ class LoganParserService: ObservableObject {
         var decryptedContent = ""
         let totalBytes = data.count
         
+        // 重置计数器
+        failedBlockCount = 0
+        successBlockCount = 0
+        
         while offset < data.count {
             // 更新进度
             let progress = 0.1 + (Double(offset) / Double(totalBytes)) * 0.6
@@ -333,15 +358,28 @@ class LoganParserService: ObservableObject {
                 if let content = String(data: decompressedData, encoding: .utf8) {
                     decryptedContent += content
                 }
+                
+                // 统计成功解密的加密块数量
+                successBlockCount += 1
             } catch {
+                // 统计加密块失败数量
+                failedBlockCount += 1
                 // 单个块解析失败，继续处理下一个块
-                Logger.error("处理加密块失败: \(error)", category: Logger.parser)
+                Logger.error("处理加密块失败 (第\(failedBlockCount)个): \(error)", category: Logger.parser)
                 continue
             }
         }
         
         guard !decryptedContent.isEmpty else {
             throw LoganParseError.emptyResult
+        }
+        
+        // 输出加密块统计信息
+        let totalBlocks = successBlockCount + failedBlockCount
+        Logger.info("解析完成，总共处理 \(totalBlocks) 个加密块：成功 \(successBlockCount) 个，失败 \(failedBlockCount) 个", category: Logger.parser)
+        
+        if failedBlockCount > 0 {
+            Logger.error("警告：有 \(failedBlockCount) 个加密块解析失败，可能影响日志完整性", category: Logger.parser)
         }
         
         return decryptedContent
