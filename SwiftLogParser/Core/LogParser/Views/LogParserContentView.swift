@@ -1,0 +1,306 @@
+//
+//  LogParserContentView.swift
+//  SwiftLogParser
+//
+//  Created by zhubiao on 2025/9/8.
+//
+
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// 日志解析主内容视图 - 符合设计图的 macOS 风格
+struct LogParserContentView: View {
+    @StateObject private var parserService: LoganParserService
+    @State private var logItems: [LoganLogItem] = []
+    @State private var filteredLogItems: [LoganLogItem] = []
+    @State private var selectedLogItem: LoganLogItem?
+    @State private var searchText = ""
+    @State private var selectedLogType = "全部日志"
+    @State private var showFileImporter = false
+    @State private var errorMessage: String?
+    @State private var isParseComplete = false
+    
+    private let logTypes = ["全部日志", "性能指标", "错误日志", "警告日志", "信息日志"]
+    
+    init() {
+        let settingsService = SettingsServiceImpl()
+        let fileManagerService = FileManagerServiceImpl()
+        self._parserService = StateObject(
+            wrappedValue: LoganParserService(
+                settingsService: settingsService,
+                fileManagerService: fileManagerService
+            )
+        )
+    }
+    
+    var body: some View {
+        HSplitView {
+            // 左侧：日志列表区域
+            VStack(spacing: 0) {
+                // 顶部搜索和筛选区域
+                searchAndFilterSection
+                
+                // 日志列表
+                logListSection
+            }
+            .frame(minWidth: 400)
+            
+            // 右侧：日志详情区域
+            logDetailSection
+                .frame(minWidth: 300)
+        }
+        .navigationTitle("日志解析器")
+        .onReceive(NotificationCenter.default.publisher(
+            for: .fileSelected
+        )) { notification in
+            if let result = notification.object as? Result<[URL], Error> {
+                handleFileSelection(result)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: .openLogFile
+        )) { _ in
+            showFileImporter = true
+        }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [UTType.data],
+            allowsMultipleSelection: false
+        ) { result in
+            handleFileSelection(result)
+        }
+        .alert("解析错误", isPresented: .constant(errorMessage != nil)) {
+            Button("确定") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+    
+    // MARK: - 视图组件
+    
+    /// 顶部搜索和筛选区域
+    private var searchAndFilterSection: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("日志解析器")
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                Spacer()
+            }
+            
+            HStack(spacing: 16) {
+                // 搜索框
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    
+                    TextField("请输入需要搜索的内容", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .onChange(of: searchText) {
+                            filterLogs()
+                        }
+                }
+                .frame(maxWidth: .infinity)
+                
+                // 日志类型选择器
+                Picker("日志类型", selection: $selectedLogType) {
+                    ForEach(logTypes, id: \.self) { type in
+                        Text(type).tag(type)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+                .frame(width: 120)
+                .onChange(of: selectedLogType) {
+                    filterLogs()
+                }
+            }
+        }
+        .padding()
+        .background(Color(.controlBackgroundColor))
+    }
+    
+    /// 日志列表区域
+    private var logListSection: some View {
+        VStack(spacing: 0) {
+            if filteredLogItems.isEmpty && !logItems.isEmpty {
+                // 无搜索结果
+                VStack(spacing: 16) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary)
+                    
+                    Text("未找到匹配的日志")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("请尝试调整搜索条件或筛选器")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.controlBackgroundColor))
+            } else if logItems.isEmpty {
+                // 空状态
+                emptyStateView
+            } else {
+                // 日志列表
+                List(filteredLogItems, id: \.logTime) { logItem in
+                    LogListItemView(
+                        logItem: logItem,
+                        isSelected: selectedLogItem?.logTime == logItem.logTime
+                    ) {
+                        selectedLogItem = logItem
+                    }
+                    .listRowSeparator(.visible)
+                }
+                .listStyle(PlainListStyle())
+            }
+        }
+    }
+    
+    /// 空状态视图
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 60))
+                .foregroundColor(.blue)
+            
+            Text("选择日志文件开始解析")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Text("使用菜单栏「文件 > 打开日志文件」或点击下方按钮")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button("选择文件") {
+                showFileImporter = true
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.controlBackgroundColor))
+    }
+    
+    /// 右侧日志详情区域
+    private var logDetailSection: some View {
+        VStack(spacing: 0) {
+            // 详情标题
+            HStack {
+                Text("日志详情")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+            }
+            .padding()
+            .background(Color(.controlBackgroundColor))
+            
+            Divider()
+            
+            if let selectedLogItem = selectedLogItem {
+                LogDetailView(logItem: selectedLogItem)
+            } else {
+                // 未选择日志时的占位视图
+                VStack(spacing: 16) {
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary)
+                    
+                    Text("选择一条日志查看详情")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.controlBackgroundColor))
+            }
+        }
+    }
+    
+    // MARK: - 私有方法
+    
+    /// 处理文件选择
+    private func handleFileSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            if let url = urls.first {
+                parseLogFile(at: url)
+            }
+        case .failure(let error):
+            errorMessage = "文件选择失败: \(error.localizedDescription)"
+        }
+    }
+    
+    /// 解析日志文件
+    private func parseLogFile(at url: URL) {
+        Task {
+            let accessed = url.startAccessingSecurityScopedResource()
+            defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+            
+            do {
+                let items = try await parserService.parseLogFile(at: url)
+                await MainActor.run {
+                    self.logItems = items
+                    self.isParseComplete = true
+                    self.errorMessage = nil
+                    self.filterLogs()
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "解析失败: \(error.localizedDescription)"
+                    self.isParseComplete = true
+                    self.logItems = []
+                    self.filteredLogItems = []
+                }
+            }
+        }
+    }
+    
+    /// 筛选日志
+    private func filterLogs() {
+        var filtered = logItems
+        
+        // 按类型筛选
+        if selectedLogType != "全部日志" {
+            filtered = filtered.filter { logItem in
+                switch selectedLogType {
+                case "性能指标":
+                    return logItem.content.contains("performance") ||
+                           logItem.content.contains("FPS") ||
+                           logItem.content.contains("Memory")
+                case "错误日志":
+                    return logItem.content.contains("error") ||
+                           logItem.content.contains("Error") ||
+                           logItem.content.contains("ERROR")
+                case "警告日志":
+                    return logItem.content.contains("warning") ||
+                           logItem.content.contains("Warning") ||
+                           logItem.content.contains("WARN")
+                case "信息日志":
+                    return logItem.content.contains("info") ||
+                           logItem.content.contains("Info") ||
+                           logItem.content.contains("INFO")
+                default:
+                    return true
+                }
+            }
+        }
+        
+        // 按搜索文本筛选
+        if !searchText.isEmpty {
+            filtered = filtered.filter { logItem in
+                logItem.content.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        
+        filteredLogItems = filtered
+    }
+}
+
+#Preview {
+    LogParserContentView()
+        .frame(width: 1000, height: 700)
+}
