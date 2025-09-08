@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Gzip
 import Combine
 import CommonCrypto
 import Compression
@@ -100,61 +101,10 @@ struct DecompressionStats {
 
 // MARK: - Data 扩展方法
 extension Data {
-    /// 使用 ZIPFoundation 进行 GZIP 解压缩
+    /// 使用 ZIPFoundation 进行 GZIP 解压缩（不再使用，保留占位以兼容旧调用）
     func decompressGzipWithZipFoundation() throws -> (Data, Bool) {
-        print("开始使用 ZIPFoundation 进行 GZIP 解压缩，数据大小: \(count)")
-        print("数据头部: \(prefix(16).map { String(format: "%02x", $0) }.joined(separator: " "))")
-        
-        // 验证 GZIP 魔数
-        guard count >= 10 && self[0] == 0x1f && self[1] == 0x8b else {
-            print("不是有效的GZIP格式")
-            throw LoganParseError.decompressionFailed
-        }
-        
-        do {
-            // 创建临时文件来存储 GZIP 数据
-            let tempDirectory = FileManager.default.temporaryDirectory
-            let tempGzipFile = tempDirectory.appendingPathComponent(UUID().uuidString + ".gz")
-            
-            defer {
-                // 清理临时文件
-                try? FileManager.default.removeItem(at: tempGzipFile)
-            }
-            
-            // 将数据写入临时 GZIP 文件
-            try self.write(to: tempGzipFile)
-            
-            // 使用 ZIPFoundation 解压
-            let archive = try Archive(url: tempGzipFile, accessMode: .read)
-            
-            // 获取第一个条目
-            var firstEntry: Entry?
-            for entry in archive {
-                firstEntry = entry
-                break
-            }
-            
-            guard let entry = firstEntry else {
-                print("GZIP 文件中没有找到条目")
-                throw LoganParseError.decompressionFailed
-            }
-            
-            print("找到 GZIP 条目: \(entry.path), 压缩大小: \(entry.compressedSize), 原始大小: \(entry.uncompressedSize)")
-            
-            var decompressedData = Data()
-            
-            // 解压数据
-            _ = try archive.extract(entry) { data in
-                decompressedData.append(data)
-            }
-            
-            print("ZIPFoundation 解压缩成功！解压后大小: \(decompressedData.count)")
-            return (decompressedData, true)  // 返回数据和成功标志
-            
-        } catch {
-            print("ZIPFoundation 解压失败: \(error)")
-            throw error
-        }
+        // 保留方法签名以避免编译错误，但直接抛出以走主路径
+        throw LoganParseError.decompressionFailed
     }
     
     /// GZIP 解压缩（手动解析GZIP格式，提取deflate数据）
@@ -257,34 +207,35 @@ extension Data {
         }
     }
     
-    /// 统一的GZIP解压缩方法，带统计信息
+    /// 统一的GZIP解压缩方法，带统计信息（主路径：GzipSwift，失败回退到手动）
     func decompressGzip(stats: inout DecompressionStats) throws -> Data {
         // 记录解压尝试
         stats.recordAttempt()
         
-        // 首先验证GZIP格式
+        // 验证 GZIP 魔数
         guard count >= 10 && self[0] == 0x1f && self[1] == 0x8b else {
             print("不是有效的GZIP格式")
             stats.recordInvalidFormat()
             throw LoganParseError.decompressionFailed
         }
         
-        // 优先尝试 ZIPFoundation
+        // 优先使用 GzipSwift
         do {
-            let (decompressedData, _) = try decompressGzipWithZipFoundation()
-            stats.recordSuccess(usingZipFoundation: true)
-            return decompressedData
+            let output = try self.gunzipped()
+            print("GzipSwift 解压成功，大小: \(output.count)")
+            stats.recordSuccess(usingZipFoundation: false)
+            return output
         } catch {
-            print("ZIPFoundation 解压失败，尝试回退方法: \(error)")
+            print("GzipSwift 解压失败，尝试回退: \(error)")
         }
         
-        // 回退到手动解压方法
+        // 回退到手动解压
         do {
             let decompressedData = try decompressGzipManually()
             stats.recordSuccess(usingZipFoundation: false)
             return decompressedData
         } catch {
-            print("手动解压也失败了: \(error)")
+            print("GZIP 手动解压也失败: \(error)")
             stats.recordFailure()
             throw error
         }

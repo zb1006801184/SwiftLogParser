@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		E6B034A52E6EABDE0098A158 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = E6B034A42E6EABDE0098A158 /* ZIPFoundation */; };
+		E6B034D92E6EDC9C0098A158 /* Gzip in Frameworks */ = {isa = PBXBuildFile; productRef = E6B034D82E6EDC9C0098A158 /* Gzip */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E6B034D92E6EDC9C0098A158 /* Gzip in Frameworks */,
 				E6B034A52E6EABDE0098A158 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -126,6 +128,7 @@
 			name = SwiftLogParser;
 			packageProductDependencies = (
 				E6B034A42E6EABDE0098A158 /* ZIPFoundation */,
+				E6B034D82E6EDC9C0098A158 /* Gzip */,
 			);
 			productName = SwiftLogParser;
 			productReference = E611A6292E6AB97100FA5446 /* SwiftLogParser.app */;
@@ -211,6 +214,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E6B034A22E6EAA000098A158 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				E6B034D72E6EDBBD0098A158 /* XCRemoteSwiftPackageReference "GzipSwift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E611A62A2E6AB97100FA5446 /* Products */;
@@ -580,6 +584,14 @@
 				minimumVersion = 0.9.19;
 			};
 		};
+		E6B034D72E6EDBBD0098A158 /* XCRemoteSwiftPackageReference "GzipSwift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/1024jp/GzipSwift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -587,6 +599,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E6B034A22E6EAA000098A158 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
 			productName = ZIPFoundation;
+		};
+		E6B034D82E6EDC9C0098A158 /* Gzip */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E6B034D72E6EDBBD0098A158 /* XCRemoteSwiftPackageReference "GzipSwift" */;
+			productName = Gzip;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
