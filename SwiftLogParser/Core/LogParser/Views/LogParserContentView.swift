@@ -114,6 +114,23 @@ struct LogParserContentView: View {
                 .onChange(of: selectedLogType) {
                     filterLogs()
                 }
+                
+                // 当有数据时显示选择文件按钮 - 位置更接近红框位置
+                if !logItems.isEmpty {
+                    Button(action: {
+                        showFileImporter = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.badge.plus")
+                                .font(.system(size: 14))
+                            Text("选择文件")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+                    .help("重新选择文件替换当前数据")
+                }
             }
         }
         .padding()
@@ -222,11 +239,24 @@ struct LogParserContentView: View {
         switch result {
         case .success(let urls):
             if let url = urls.first {
+                // 清除之前的数据和选择状态
+                clearCurrentData()
                 parseLogFile(at: url)
             }
         case .failure(let error):
             errorMessage = "文件选择失败: \(error.localizedDescription)"
         }
+    }
+    
+    /// 清除当前数据
+    private func clearCurrentData() {
+        logItems = []
+        filteredLogItems = []
+        selectedLogItem = nil
+        searchText = ""
+        selectedLogType = "全部日志"
+        isParseComplete = false
+        errorMessage = nil
     }
     
     /// 解析日志文件
