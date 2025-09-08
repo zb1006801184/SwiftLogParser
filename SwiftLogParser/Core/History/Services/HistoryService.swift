@@ -40,6 +40,13 @@ class HistoryService: HistoryServiceProtocol {
     
     /// 删除指定历史记录
     func deleteHistory(id: String) {
+        if let target = histories.first(where: { $0.id == id }) {
+            // 删除关联的 JSON 文件（若存在）
+            let path = target.jsonFilePath ?? target.filePath
+            if FileManager.default.fileExists(atPath: path) {
+                try? FileManager.default.removeItem(atPath: path)
+            }
+        }
         histories.removeAll { $0.id == id }
         saveHistories()
         NotificationCenter.default.post(name: .historyUpdated, object: nil)
@@ -47,6 +54,13 @@ class HistoryService: HistoryServiceProtocol {
     
     /// 清空所有历史记录
     func clearAllHistories() {
+        // 尝试删除所有关联文件
+        for item in histories {
+            let path = item.jsonFilePath ?? item.filePath
+            if FileManager.default.fileExists(atPath: path) {
+                try? FileManager.default.removeItem(atPath: path)
+            }
+        }
         histories.removeAll()
         saveHistories()
         NotificationCenter.default.post(name: .historyUpdated, object: nil)

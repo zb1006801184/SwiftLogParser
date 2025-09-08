@@ -35,11 +35,12 @@ class FileManagerServiceImpl: FileManagerService {
             options: [.prettyPrinted]
         )
         
-        // 生成输出文件名
-        let outputFileName = originalFileName.replacingOccurrences(
-            of: ".logan",
-            with: "_parsed.json"
-        )
+        // 生成输出文件名：原始名_时间戳.json，保证唯一且固定 .json 后缀
+        let baseName = (originalFileName as NSString).deletingPathExtension
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd_HHmmss_SSS"
+        let timestamp = formatter.string(from: Date())
+        var outputFileName = "\(baseName)_\(timestamp).json"
         
         // 获取应用沙盒内的文档目录，避免桌面写入权限问题（沙盒始终可写）
         let documentsUrl = FileManager.default.urls(
@@ -52,7 +53,12 @@ class FileManagerServiceImpl: FileManagerService {
             try FileManager.default.createDirectory(at: documentsUrl, withIntermediateDirectories: true)
         }
         
-        let outputUrl = documentsUrl.appendingPathComponent(outputFileName)
+        var outputUrl = documentsUrl.appendingPathComponent(outputFileName)
+        // 若极小概率重名，追加随机后缀
+        if FileManager.default.fileExists(atPath: outputUrl.path) {
+            outputFileName = "\(baseName)_\(timestamp)_\(UUID().uuidString.prefix(8)).json"
+            outputUrl = documentsUrl.appendingPathComponent(outputFileName)
+        }
         
         // 写入文件
         try jsonData.write(to: outputUrl)
