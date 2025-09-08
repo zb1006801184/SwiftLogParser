@@ -145,10 +145,10 @@ struct LogParserContentView: View {
                 emptyStateView
             } else {
                 // 日志列表
-                List(filteredLogItems, id: \.logTime) { logItem in
+                List(filteredLogItems) { logItem in
                     LogListItemView(
                         logItem: logItem,
-                        isSelected: selectedLogItem?.logTime == logItem.logTime
+                        isSelected: selectedLogItem?.id == logItem.id
                     ) {
                         selectedLogItem = logItem
                     }
