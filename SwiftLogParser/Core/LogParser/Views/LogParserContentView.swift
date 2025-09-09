@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 /// 日志解析主内容视图 - 符合设计图的 macOS 风格
 struct LogParserContentView: View {
     @StateObject private var parserService: LoganParserService
-    @State private var logItems: [LoganLogItem] = []
+    @State public var logItems: [LoganLogItem] = []
     @State private var filteredLogItems: [LoganLogItem] = []
     @State private var selectedLogItem: LoganLogItem?
     @State private var searchText = ""
@@ -36,6 +36,13 @@ struct LogParserContentView: View {
                 fileManagerService: fileManagerService
             )
         )
+    }
+    
+    // 为预览和测试添加的初始化方法
+    init(logItems: [LoganLogItem]) {
+        self.init() // 调用主初始化器
+        self._logItems = State(initialValue: logItems)
+        self._filteredLogItems = State(initialValue: logItems)
     }
     
     var body: some View {
@@ -416,6 +423,6 @@ struct LogParserContentView: View {
 }
 
 #Preview {
-    LogParserContentView()
+    LogParserContentView(logItems: LogMockData.mockLogItems)
         .frame(width: 1000, height: 700)
 }
