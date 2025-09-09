@@ -20,6 +20,11 @@ struct LogParserContentView: View {
     @State private var errorMessage: String?
     @State private var isParseComplete = false
     
+    // 新增：解析进度相关状态
+    @State private var isParsing = false
+    @State private var parseProgress: Double = 0.0
+    @State private var currentFileName: String?
+    
     private let logTypes = ["全部日志", "性能指标", "错误日志", "警告日志", "信息日志"]
     
     init() {
@@ -147,7 +152,13 @@ struct LogParserContentView: View {
     /// 日志列表区域
     private var logListSection: some View {
         VStack(spacing: 0) {
-            if filteredLogItems.isEmpty && !logItems.isEmpty {
+            // 当正在解析时显示加载进度视图
+            if parserService.isParsing || isParsing {
+                LoadingProgressView(
+                    progress: parserService.parseProgress,
+                    fileName: currentFileName
+                )
+            } else if filteredLogItems.isEmpty && !logItems.isEmpty {
                 // 无搜索结果
                 VStack(spacing: 16) {
                     Image(systemName: "magnifyingglass")
@@ -273,7 +284,12 @@ struct LogParserContentView: View {
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
             
             do {
+                isParsing = true
+                currentFileName = url.lastPathComponent
+                parseProgress = 0.0
+                
                 let items = try await parserService.parseLogFile(at: url)
+                
                 await MainActor.run {
                     self.logItems = items
                     self.isParseComplete = true
@@ -287,6 +303,12 @@ struct LogParserContentView: View {
                     self.logItems = []
                     self.filteredLogItems = []
                 }
+            }
+            // 解析完成后重置进度和文件名
+            await MainActor.run {
+                self.isParsing = false
+                self.parseProgress = 0.0
+                self.currentFileName = nil
             }
         }
     }
