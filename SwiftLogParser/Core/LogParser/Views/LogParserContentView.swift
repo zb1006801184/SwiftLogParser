@@ -15,7 +15,7 @@ struct LogParserContentView: View {
     @State private var filteredLogItems: [LoganLogItem] = []
     @State private var selectedLogItem: LoganLogItem?
     @State private var searchText = ""
-    @State private var selectedLogType = "全部"
+    @State private var selectedLogType:LogType?
     @State private var showFileImporter = false
     @State private var errorMessage: String?
     @State private var isParseComplete = false
@@ -132,10 +132,13 @@ struct LogParserContentView: View {
                 }
                 .frame(maxWidth: .infinity)
                 
+                
+        
                 // 日志类型选择器
                 Picker("日志类型", selection: $selectedLogType) {
-                    ForEach(logTypes, id: \.self) { type in
-                        Text(type).tag(type)
+                    Text("全部").tag(LogType?.none)
+                    ForEach(LogType.allCases, id: \ .self) { type in
+                        Text(type.displayName).tag(Optional(type))
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
@@ -289,7 +292,6 @@ struct LogParserContentView: View {
         filteredLogItems = []
         selectedLogItem = nil
         searchText = ""
-        selectedLogType = "全部"
         isParseComplete = false
         errorMessage = nil
     }
@@ -394,22 +396,16 @@ struct LogParserContentView: View {
     /// 筛选日志
     private func filterLogs() {
         var filtered = logItems
-        
         // 按类型筛选
-        if selectedLogType != "全部" {
-            if let target = LogType.allCases.first(where: { $0.displayName == selectedLogType }) {
-                print("筛选日志类型: \(target.displayName) (\(target.rawValue))")
-                filtered = filtered.filter { $0.flag == target.rawValue.description }
-            }
+        if let target = selectedLogType {
+            filtered = filtered.filter { $0.flag == target.rawValue.description }
         }
-        
         // 按搜索文本筛选
         if !searchText.isEmpty {
             filtered = filtered.filter { logItem in
                 logItem.content.localizedCaseInsensitiveContains(searchText)
             }
         }
-        
         filteredLogItems = filtered
     }
 }
