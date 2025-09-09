@@ -11,6 +11,7 @@ import Combine
 import CommonCrypto
 import Compression
 import ZIPFoundation
+import SwiftUI
 
 // MARK: - Logan 常量定义
 struct LoganConstants {
@@ -281,6 +282,11 @@ struct LoganLogItem: Identifiable, Codable {
     let threadId: String
     let isMainThread: String
     
+    // 新增：根据 flag 解析得到的日志类型（可选）
+    var logType: LogType? {
+        LogType.from(stringValue: flag)
+    }
+    
     // 自定义初始化器，自动生成UUID
     init(content: String, flag: String, logTime: String, threadName: String, threadId: String, isMainThread: String) {
         self.id = UUID()
@@ -291,6 +297,34 @@ struct LoganLogItem: Identifiable, Codable {
         self.threadId = threadId
         self.isMainThread = isMainThread
     }
+    
+    /// 日志类型颜色
+    /// 根据 flag 字段获取对应的日志类型颜色
+    var logTypeColor: Color {
+        guard let logType = logType else {
+            return .gray // 默认颜色
+        }
+        return logType.color
+    }
+    
+    /// 日志类型显示名称
+    /// 根据 flag 字段获取对应的日志类型显示名称
+    var logTypeDisplayName: String {
+        guard let logType = logType else {
+            return "未知" // 默认显示名称
+        }
+        return logType.displayName
+    }
+    
+    /// logTypeIconName
+    /// 根据 flag 字段获取对应的日志类型图标名称
+    var logTypeIconName: String {
+        guard let logType = logType else {
+            return "questionmark.circle" // 默认图标
+        }
+        return logType.iconName
+    }
+    
 }
 
 // MARK: - 设置服务协议

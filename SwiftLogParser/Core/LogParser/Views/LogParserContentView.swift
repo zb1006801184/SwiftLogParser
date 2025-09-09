@@ -15,7 +15,7 @@ struct LogParserContentView: View {
     @State private var filteredLogItems: [LoganLogItem] = []
     @State private var selectedLogItem: LoganLogItem?
     @State private var searchText = ""
-    @State private var selectedLogType = "全部日志"
+    @State private var selectedLogType = "全部"
     @State private var showFileImporter = false
     @State private var errorMessage: String?
     @State private var isParseComplete = false
@@ -25,7 +25,17 @@ struct LogParserContentView: View {
     @State private var parseProgress: Double = 0.0
     @State private var currentFileName: String?
     
-    private let logTypes = ["全部日志", "性能指标", "错误日志", "警告日志", "信息日志"]
+    private let logTypes = [
+        "全部",
+        "日志头",
+//        "调试信息",
+        "信息/埋点",
+        "错误信息",
+        "警告信息",
+        "严重错误",
+        "网络请求",
+        "性能指标"
+    ]
     
     init() {
         let settingsService = SettingsServiceImpl()
@@ -279,7 +289,7 @@ struct LogParserContentView: View {
         filteredLogItems = []
         selectedLogItem = nil
         searchText = ""
-        selectedLogType = "全部日志"
+        selectedLogType = "全部"
         isParseComplete = false
         errorMessage = nil
     }
@@ -386,28 +396,10 @@ struct LogParserContentView: View {
         var filtered = logItems
         
         // 按类型筛选
-        if selectedLogType != "全部日志" {
-            filtered = filtered.filter { logItem in
-                switch selectedLogType {
-                case "性能指标":
-                    return logItem.content.contains("performance") ||
-                           logItem.content.contains("FPS") ||
-                           logItem.content.contains("Memory")
-                case "错误日志":
-                    return logItem.content.contains("error") ||
-                           logItem.content.contains("Error") ||
-                           logItem.content.contains("ERROR")
-                case "警告日志":
-                    return logItem.content.contains("warning") ||
-                           logItem.content.contains("Warning") ||
-                           logItem.content.contains("WARN")
-                case "信息日志":
-                    return logItem.content.contains("info") ||
-                           logItem.content.contains("Info") ||
-                           logItem.content.contains("INFO")
-                default:
-                    return true
-                }
+        if selectedLogType != "全部" {
+            if let target = LogType.allCases.first(where: { $0.displayName == selectedLogType }) {
+                print("筛选日志类型: \(target.displayName) (\(target.rawValue))")
+                filtered = filtered.filter { $0.flag == target.rawValue.description }
             }
         }
         

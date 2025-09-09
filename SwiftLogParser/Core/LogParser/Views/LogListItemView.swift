@@ -8,111 +8,111 @@
 import SwiftUI
 
 /// 日志列表项视图
+/// 显示单个日志条目的简要信息，包含类型标识
 struct LogListItemView: View {
     let logItem: LoganLogItem
     let isSelected: Bool
     let onTap: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                // 顶部信息行
-                HStack {
-                    // 时间戳
-                    Text(formattedTime)
-                        .font(.system(size: 11).monospaced())
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(4)
+        HStack(spacing: 12) {
+            // 日志类型图标和颜色标识
+            VStack(spacing: 4) {
+                Image(systemName: logItem.logTypeIconName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(logItem.logTypeColor)
+                
+                Text(logItem.logTypeDisplayName)
+                    .font(.caption2)
+                    .foregroundColor(logItem.logTypeColor)
+                    .lineLimit(1)
+            }
+            .frame(width: 60)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                // 日志内容预览 - 为空给出占位
+                let preview = logItem.content.isEmpty ? "<空内容>" : logItem.content
+                Text(preview)
+                    .font(.system(size: 13))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                
+                // 日志详细信息
+                HStack(spacing: 8) {
+                    // 时间信息
+                    Text(formatTime(logItem.logTime))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     
                     Spacer()
                     
-                    // 日志类型标签
-                    Text(logTypeText)
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(logTypeColor)
-                        .cornerRadius(4)
-                }
-                
-                // 日志内容
-                Text(logItem.content)
-                    .font(.system(size: 13).monospaced())
-                    .foregroundColor(.primary)
-                    .lineLimit(3)
-                    .truncationMode(.tail)
-                    .multilineTextAlignment(.leading)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                Rectangle()
-                    .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-                    .overlay(
-                        Rectangle()
-                            .stroke(
-                                isSelected ? Color.accentColor : Color.clear,
-                                lineWidth: 2
+                    // 线程信息
+                    if !logItem.threadName.isEmpty &&
+                       logItem.threadName != "unknown" {
+                        Text("线程: \(logItem.threadName)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.secondary.opacity(0.1))
                             )
-                    )
-            )
-            .cornerRadius(6)
-            .contentShape(Rectangle())
+                    }
+                    
+                    // 主线程标识
+                    if logItem.isMainThread == "true" {
+                        Text("主线程")
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.blue)
+                            )
+                    }
+                }
+            }
+            
+            Spacer()
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ?
+                      Color.accentColor.opacity(0.1) :
+                      Color.clear)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(
+                            isSelected ?
+                            Color.accentColor :
+                            Color.clear,
+                            lineWidth: 1
+                        )
+                )
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
+        }
     }
     
-    // MARK: - 计算属性
-    
-    private var formattedTime: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-        formatter.timeZone = TimeZone.current
-        
-        // 首先尝试解析 ISO8601 格式
-        let iso8601Formatter = ISO8601DateFormatter()
-        if let date = iso8601Formatter.date(from: logItem.logTime) {
-            return formatter.string(from: date)
+    /// 格式化时间显示
+    private func formatTime(_ timeString: String) -> String {
+        // 尝试解析ISO8601格式的时间
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: timeString) else {
+            return timeString
         }
         
-        // 如果 ISO8601 解析失败，尝试解析为时间戳
-        if let timeInterval = Double(logItem.logTime) {
-            return formatter.string(from: Date(timeIntervalSince1970: timeInterval))
-        }
-        
-        // 如果都解析失败，返回原始字符串
-        return logItem.logTime
-    }
-    
-    private var logTypeText: String {
-        let content = logItem.content.lowercased()
-        if content.contains("performance") || content.contains("fps") {
-            return "性能指标"
-        } else if content.contains("error") {
-            return "错误"
-        } else if content.contains("warning") || content.contains("warn") {
-            return "警告"
-        } else {
-            return "信息"
-        }
-    }
-    
-    private var logTypeColor: Color {
-        let content = logItem.content.lowercased()
-        if content.contains("performance") || content.contains("fps") {
-            return .orange
-        } else if content.contains("error") {
-            return .red
-        } else if content.contains("warning") || content.contains("warn") {
-            return .yellow
-        } else {
-            return .blue
-        }
+        // 格式化为本地时间显示
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateFormat = "MM-dd HH:mm:ss.SSS"
+        return displayFormatter.string(from: date)
     }
 }
 
