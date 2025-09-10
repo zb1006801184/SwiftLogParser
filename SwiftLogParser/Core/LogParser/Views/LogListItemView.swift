@@ -16,22 +16,13 @@ struct LogListItemView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 时间戳 - 顶部显示
-            Text(formatTime(logItem.logTime))
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // 日志内容
-            Text(logItem.content.isEmpty ? "<空内容>" : logItem.content)
-                .font(.system(size: 13))
-                .foregroundColor(.primary)
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // 底部标签区域
+            // 顶部：时间戳和类型标签横向对齐
             HStack {
+                // 时间戳
+                Text(formatTime(logItem.logTime))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.blue)
+                
                 Spacer()
                 
                 // 日志类型标签
@@ -51,6 +42,14 @@ struct LogListItemView: View {
                         .fill(logItem.logTypeColor)
                 )
             }
+            
+            // 日志内容 - 最多显示三行
+            Text(logItem.content.isEmpty ? "<空内容>" : logItem.content)
+                .font(.system(size: 13))
+                .foregroundColor(.primary)
+                .lineLimit(3)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
         .background(
