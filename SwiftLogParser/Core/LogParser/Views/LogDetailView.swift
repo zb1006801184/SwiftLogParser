@@ -13,21 +13,18 @@ struct LogDetailView: View {
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 20) {
                 // 日志时间信息
                 timeSection
-                
-                Divider()
                 
                 // 日志类型信息
                 typeSection
                 
-                Divider()
-                
                 // 日志内容
                 contentSection
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 20)
         }
         .background(Color(.controlBackgroundColor))
     }
@@ -37,65 +34,50 @@ struct LogDetailView: View {
     /// 时间信息区域
     private var timeSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: "clock")
                     .foregroundColor(.blue)
+                    .font(.system(size: 16))
                 
                 Text("日志时间")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
-                Spacer()
             }
             
             Text(formattedDateTime)
                 .font(.system(.body, design: .monospaced))
                 .foregroundColor(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(.textBackgroundColor))
-                .cornerRadius(6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color(.separatorColor), lineWidth: 1)
-                )
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
     
     /// 类型信息区域
     private var typeSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: "tag")
                     .foregroundColor(.blue)
+                    .font(.system(size: 16))
                 
                 Text("日志类型")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
-                Spacer()
             }
             
-            HStack {
-                Text(logTypeText)
-                    .font(.body)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(logTypeColor)
-                    .cornerRadius(6)
-                
-                Spacer()
-            }
+            Text(logItem.logTypeDisplayName)
+                .font(.body)
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
     
     /// 内容区域
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: "doc.text")
                     .foregroundColor(.blue)
+                    .font(.system(size: 16))
                 
                 Text("日志内容")
                     .font(.headline)
@@ -111,21 +93,18 @@ struct LogDetailView: View {
                 .controlSize(.small)
             }
             
-            ScrollView {
-                Text(logItem.content)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding()
-                    .background(Color(.textBackgroundColor))
-                    .cornerRadius(6)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(.separatorColor), lineWidth: 1)
-                    )
-            }
-            .frame(minHeight: 200)
+            Text(logItem.content)
+                .font(.system(.body, design: .monospaced))
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+                .padding()
+                .background(Color(.textBackgroundColor))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(.separatorColor), lineWidth: 1)
+                )
         }
     }
     
@@ -152,31 +131,6 @@ struct LogDetailView: View {
         return logItem.logTime
     }
     
-    private var logTypeText: String {
-        let content = logItem.content.lowercased()
-        if content.contains("performance") || content.contains("fps") || content.contains("memory") {
-            return "性能指标"
-        } else if content.contains("error") {
-            return "错误日志"
-        } else if content.contains("warning") || content.contains("warn") {
-            return "警告日志"
-        } else {
-            return "信息日志"
-        }
-    }
-    
-    private var logTypeColor: Color {
-        let content = logItem.content.lowercased()
-        if content.contains("performance") || content.contains("fps") || content.contains("memory") {
-            return .orange
-        } else if content.contains("error") {
-            return .red
-        } else if content.contains("warning") || content.contains("warn") {
-            return .yellow
-        } else {
-            return .blue
-        }
-    }
     
     // MARK: - 私有方法
     

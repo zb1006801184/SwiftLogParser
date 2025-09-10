@@ -103,69 +103,56 @@ struct LogParserContentView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .overlay(alignment: .bottomTrailing) {
+            // 浮动操作按钮
+            floatingActionButton
+        }
     }
     
     // MARK: - 视图组件
     
     /// 顶部搜索和筛选区域
     private var searchAndFilterSection: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Text("日志解析器")
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                Spacer()
-            }
-            
+        VStack(spacing: 16) {
             HStack(spacing: 16) {
                 // 搜索框
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
+                        .font(.system(size: 16))
                     
                     TextField("请输入需要搜索的内容", text: $searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .textFieldStyle(PlainTextFieldStyle())
                         .onChange(of: searchText) {
                             filterLogs()
                         }
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(.textBackgroundColor))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(.separatorColor), lineWidth: 1)
+                )
                 .frame(maxWidth: .infinity)
                 
-                
-        
                 // 日志类型选择器
                 Picker("日志类型", selection: $selectedLogType) {
-                    Text("全部").tag(LogType?.none)
-                    ForEach(LogType.allCases, id: \ .self) { type in
+                    Text("全部日志").tag(LogType?.none)
+                    ForEach(LogType.allCases, id: \.self) { type in
                         Text(type.displayName).tag(Optional(type))
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
-                .frame(width: 160)
+                .frame(width: 120)
                 .onChange(of: selectedLogType) {
                     filterLogs()
                 }
-                
-                // 当有数据时显示选择文件按钮 - 位置更接近红框位置
-                if !logItems.isEmpty {
-                    Button(action: {
-                        showFileImporter = true
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "doc.badge.plus")
-                                .font(.system(size: 14))
-                            Text("选择文件")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
-                    .help("重新选择文件替换当前数据")
-                }
             }
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .background(Color(.controlBackgroundColor))
     }
     
@@ -199,17 +186,21 @@ struct LogParserContentView: View {
                 // 空状态
                 emptyStateView
             } else {
-                // 日志列表
-                List(filteredLogItems) { logItem in
-                    LogListItemView(
-                        logItem: logItem,
-                        isSelected: selectedLogItem?.id == logItem.id
-                    ) {
-                        selectedLogItem = logItem
+                // 日志列表 - 使用ScrollView支持卡片式布局
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(filteredLogItems) { logItem in
+                            LogListItemView(
+                                logItem: logItem,
+                                isSelected: selectedLogItem?.id == logItem.id
+                            ) {
+                                selectedLogItem = logItem
+                            }
+                        }
                     }
-                    .listRowSeparator(.visible)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                 }
-                .listStyle(PlainListStyle())
             }
         }
     }
@@ -246,7 +237,8 @@ struct LogParserContentView: View {
                 
                 Spacer()
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(Color(.controlBackgroundColor))
             
             Divider()
@@ -268,6 +260,25 @@ struct LogParserContentView: View {
                 .background(Color(.controlBackgroundColor))
             }
         }
+    }
+    
+    /// 浮动操作按钮
+    private var floatingActionButton: some View {
+        Button(action: {
+            showFileImporter = true
+        }) {
+            Image(systemName: "plus")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 56, height: 56)
+                .background(Color.accentColor)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.trailing, 20)
+        .padding(.bottom, 20)
+        .help("选择新的日志文件")
     }
     
     // MARK: - 私有方法
