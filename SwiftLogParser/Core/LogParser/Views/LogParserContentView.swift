@@ -15,6 +15,7 @@ struct LogParserContentView: View {
     @State private var filteredLogItems: [LoganLogItem] = []
     @State private var selectedLogItem: LoganLogItem?
     @State private var searchText = ""
+    @State private var currentSearchText = "" // 新增：当前生效的搜索文本
     @State private var selectedLogType:LogType?
     @State private var showFileImporter = false
     @State private var errorMessage: String?
@@ -123,9 +124,21 @@ struct LogParserContentView: View {
                     
                     TextField("请输入需要搜索的内容", text: $searchText)
                         .textFieldStyle(PlainTextFieldStyle())
-                        .onChange(of: searchText) {
-                            filterLogs()
+                        .onSubmit {
+                            // 按回车键触发搜索
+                            performSearch()
                         }
+                    
+                    // 搜索确认按钮
+                    Button(action: {
+                        performSearch()
+                    }) {
+                        Image(systemName: "return")
+                            .foregroundColor(.accentColor)
+                            .font(.system(size: 14))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("点击搜索")
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -411,13 +424,19 @@ struct LogParserContentView: View {
         if let target = selectedLogType {
             filtered = filtered.filter { $0.flag == target.rawValue.description }
         }
-        // 按搜索文本筛选
-        if !searchText.isEmpty {
+        // 按搜索文本筛选 - 使用 currentSearchText 而不是 searchText
+        if !currentSearchText.isEmpty {
             filtered = filtered.filter { logItem in
-                logItem.content.localizedCaseInsensitiveContains(searchText)
+                logItem.content.localizedCaseInsensitiveContains(currentSearchText)
             }
         }
         filteredLogItems = filtered
+    }
+    
+    /// 执行搜索
+    private func performSearch() {
+        currentSearchText = searchText
+        filterLogs()
     }
 }
 
