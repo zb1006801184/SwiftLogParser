@@ -145,7 +145,7 @@ struct LogParserContentView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
-                .frame(width: 120)
+                .frame(width: 150)
                 .onChange(of: selectedLogType) {
                     filterLogs()
                 }
