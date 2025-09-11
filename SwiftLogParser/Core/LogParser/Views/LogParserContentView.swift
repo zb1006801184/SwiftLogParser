@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftUIX
 import UniformTypeIdentifiers
 
 /// 日志解析主内容视图 - 符合设计图的 macOS 风格
@@ -112,45 +113,23 @@ struct LogParserContentView: View {
     
     // MARK: - 视图组件
     
-    /// 顶部搜索和筛选区域
+    /// 顶部搜索和筛选区域 - 现代化设计
     private var searchAndFilterSection: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 16) {
-                // 搜索框
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 16))
-                    
-                    TextField("请输入需要搜索的内容", text: $searchText)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .onSubmit {
-                            // 按回车键触发搜索
-                            performSearch()
-                        }
-                    
-                    // 搜索确认按钮
-                    Button(action: {
+        VStack(spacing: DesignSystem.Spacing.md) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                // 现代化搜索框
+                ModernSearchBar(
+                    searchText: $searchText,
+                    placeholder: "搜索日志内容...",
+                    onSearch: {
                         performSearch()
-                    }) {
-                        Image(systemName: "return")
-                            .foregroundColor(.accentColor)
-                            .font(.system(size: 14))
+                    },
+                    onClear: {
+                        performSearch()
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("点击搜索")
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(.textBackgroundColor))
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color(.separatorColor), lineWidth: 1)
                 )
-                .frame(maxWidth: .infinity)
                 
-                // 日志类型选择器
+                // 日志类型选择器 - 现代化样式
                 Picker("日志类型", selection: $selectedLogType) {
                     Text("全部日志").tag(LogType?.none)
                     ForEach(LogType.allCases, id: \.self) { type in
@@ -158,43 +137,60 @@ struct LogParserContentView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
-                .frame(width: 150)
+                .frame(width: 160)
+                .padding(.horizontal, DesignSystem.Spacing.md)
+                .padding(.vertical, DesignSystem.Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                        .fill(DesignSystem.Colors.surfaceElevated)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                                .stroke(DesignSystem.Colors.border, lineWidth: 1)
+                        )
+                )
+                .shadowSmall()
                 .onChange(of: selectedLogType) {
                     filterLogs()
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(.controlBackgroundColor))
+        .padding(.horizontal, DesignSystem.Spacing.md)
+        .padding(.vertical, DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.background)
     }
+    
     
     /// 日志列表区域
     private var logListSection: some View {
         VStack(spacing: 0) {
-            // 当正在解析时显示加载进度视图
+            // 当正在解析时显示现代化加载进度视图
             if parserService.isParsing || isParsing {
-                LoadingProgressView(
+                ModernLoadingView(
                     progress: parserService.parseProgress,
-                    fileName: currentFileName
+                    fileName: currentFileName,
+                    message: "正在解析日志文件，请稍候..."
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if filteredLogItems.isEmpty && !logItems.isEmpty {
-                // 无搜索结果
-                VStack(spacing: 16) {
+                // 无搜索结果 - 现代化设计
+                VStack(spacing: DesignSystem.Spacing.lg) {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 40))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 48, weight: .light))
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
                     
-                    Text("未找到匹配的日志")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    Text("请尝试调整搜索条件或筛选器")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    VStack(spacing: DesignSystem.Spacing.sm) {
+                        Text("未找到匹配的日志")
+                            .font(DesignSystem.Typography.headline)
+                            .foregroundColor(DesignSystem.Colors.textPrimary)
+                        
+                        Text("请尝试调整搜索条件或筛选器")
+                            .font(DesignSystem.Typography.subheadline)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.controlBackgroundColor))
+                .background(DesignSystem.Colors.background)
             } else if logItems.isEmpty {
                 // 空状态
                 emptyStateView
@@ -218,25 +214,36 @@ struct LogParserContentView: View {
         }
     }
     
-    /// 空状态视图
+    
+    /// 空状态视图 - 现代化设计
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 60))
-                .foregroundColor(.blue)
+        VStack(spacing: DesignSystem.Spacing.xl) {
+            // 图标区域
+            ZStack {
+                Circle()
+                    .fill(DesignSystem.Colors.primaryLight)
+                    .frame(width: 120, height: 120)
+                
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.system(size: 48, weight: .medium))
+                    .foregroundColor(DesignSystem.Colors.primary)
+            }
             
+            // 文本区域
             Text("选择日志文件开始解析")
-                .font(.title2)
+                .font(DesignSystem.Typography.title2)
                 .fontWeight(.semibold)
-        
+                .foregroundColor(DesignSystem.Colors.textPrimary)
+            
+            // 操作按钮
             Button("选择文件") {
                 showFileImporter = true
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.primary)
             .controlSize(.large)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.controlBackgroundColor))
+        .background(DesignSystem.Colors.background)
     }
     
     /// 右侧日志详情区域
@@ -275,22 +282,33 @@ struct LogParserContentView: View {
         }
     }
     
-    /// 浮动操作按钮
+    
+    /// 浮动操作按钮 - 现代化设计
     private var floatingActionButton: some View {
         Button(action: {
             showFileImporter = true
         }) {
             Image(systemName: "plus")
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundColor(.white)
-                .frame(width: 56, height: 56)
-                .background(Color.accentColor)
-                .clipShape(Circle())
-                .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                .frame(width: 64, height: 64)
+                .background(
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [DesignSystem.Colors.primary, DesignSystem.Colors.primaryDark],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .shadowLarge()
         }
         .buttonStyle(PlainButtonStyle())
-        .padding(.trailing, 20)
-        .padding(.bottom, 20)
+        .scaleEffect(1.0)
+        .animation(DesignSystem.Animation.spring, value: showFileImporter)
+        .padding(.trailing, DesignSystem.Spacing.lg)
+        .padding(.bottom, DesignSystem.Spacing.lg)
         .help("选择新的日志文件")
     }
     

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E6315DE12E72765700F3D670 /* SwiftUIX in Frameworks */ = {isa = PBXBuildFile; productRef = E6315DE02E72765700F3D670 /* SwiftUIX */; };
 		E6B034A52E6EABDE0098A158 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = E6B034A42E6EABDE0098A158 /* ZIPFoundation */; };
 		E6B034D92E6EDC9C0098A158 /* Gzip in Frameworks */ = {isa = PBXBuildFile; productRef = E6B034D82E6EDC9C0098A158 /* Gzip */; };
 /* End PBXBuildFile section */
@@ -57,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E6315DE12E72765700F3D670 /* SwiftUIX in Frameworks */,
 				E6B034D92E6EDC9C0098A158 /* Gzip in Frameworks */,
 				E6B034A52E6EABDE0098A158 /* ZIPFoundation in Frameworks */,
 			);
@@ -129,6 +131,7 @@
 			packageProductDependencies = (
 				E6B034A42E6EABDE0098A158 /* ZIPFoundation */,
 				E6B034D82E6EDC9C0098A158 /* Gzip */,
+				E6315DE02E72765700F3D670 /* SwiftUIX */,
 			);
 			productName = SwiftLogParser;
 			productReference = E611A6292E6AB97100FA5446 /* SwiftLogParser.app */;
@@ -215,6 +218,7 @@
 			packageReferences = (
 				E6B034A22E6EAA000098A158 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 				E6B034D72E6EDBBD0098A158 /* XCRemoteSwiftPackageReference "GzipSwift" */,
+				E6315DDF2E72742700F3D670 /* XCRemoteSwiftPackageReference "SwiftUIX" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E611A62A2E6AB97100FA5446 /* Products */;
@@ -576,6 +580,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		E6315DDF2E72742700F3D670 /* XCRemoteSwiftPackageReference "SwiftUIX" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SwiftUIX/SwiftUIX.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.4;
+			};
+		};
 		E6B034A22E6EAA000098A158 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
@@ -595,6 +607,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		E6315DE02E72765700F3D670 /* SwiftUIX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E6315DDF2E72742700F3D670 /* XCRemoteSwiftPackageReference "SwiftUIX" */;
+			productName = SwiftUIX;
+		};
 		E6B034A42E6EABDE0098A158 /* ZIPFoundation */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E6B034A22E6EAA000098A158 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
