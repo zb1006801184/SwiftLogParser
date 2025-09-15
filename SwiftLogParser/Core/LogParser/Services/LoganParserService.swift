@@ -10,7 +10,6 @@ import Gzip
 import Combine
 import CommonCrypto
 import Compression
-import ZIPFoundation
 import SwiftUI
 
 // MARK: - Logan 常量定义

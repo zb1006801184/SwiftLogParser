@@ -1,99 +1,109 @@
 
 
-## 项目功能概述
+## SwiftLogParser
 
-SwiftLogParser 是一款基于 SwiftUI 的 Logan 日志解析与查看工具，支持：
+一款基于 SwiftUI 的 Logan 日志解析与查看工具。
 
-- 解析 Logan 加密日志（AES/CBC 解密 + GZIP 解压，带失败/成功统计）。
-- 解析后的日志按行映射为结构化模型并分类显示（错误、告警、信息等）。
-- 支持导出解析结果为 JSON 文件并记录解析历史。
-- 自定义 AES Key/IV（长度 16），方便适配不同 App 的 Logan 配置。
+## 环境要求
 
-## 目录与模块说明
+- macOS 14 或更高版本
+- Xcode 15 或更高版本
+- 依赖通过 Swift Package Manager 管理
+
+## 快速开始
+
+1. 打开 `SwiftLogParser.xcodeproj`。
+2. 选择 `SwiftLogParser` 目标并运行。
+3. 首次启动先在「设置」中配置 AES Key 与 IV（必须为 16 字符）。
+4. 回到解析页，选择 Logan 文件，等待进度至 100%。
+
+## 核心功能
+
+- 解析 Logan 加密日志（AES/CBC 解密 + GZIP 解压，含成功/失败统计）。
+- 将日志行映射为结构化模型，按类型分类（错误、告警、信息等）。
+- 导出解析结果为 JSON，并自动记录解析历史。
+- 自定义 AES Key/IV（长度 16），适配不同 App 的 Logan 配置。
+
+## 目录结构（概要）
 
 - `Core/LogParser/`
-  - 解析核心逻辑，包含解密、解压、内容解析、统计等。
-  - 关键类：`LoganParserService`（负责解析流程与进度）、`LogType`（日志类型映射）。
+  - 解密、解压、内容解析与统计。
+  - 关键类型：`LoganParserService`、`LogType`。
 - `Core/History/`
-  - 解析历史模型、服务与展示视图，便于回顾过去的解析与导出结果。
-  - 模型：`ParseHistory`（包含文件大小、条数、是否成功、JSON 路径等）。
+  - 解析历史模型、服务与视图（`ParseHistory` 等）。
 - `Core/Settings/`
-  - 设置模块，管理 AES Key/IV 的读取与校验，以及与解析服务的对接。
-  - 模型：`AppSettings`，并可转换为 `LoganSettings` 提供给解析服务。
+  - AES Key/IV 的读取、校验与持久化；对接解析服务。
 - `Core/Shared/`
-  - 通用组件（如搜索框、加载视图）与设计规范。
+  - 通用组件与设计系统（如搜索框、加载视图）。
 - `Core/Network/`
-  - 基于 Moya 的网络封装，包含全局配置、`APITarget` 默认实现与 `NetworkProvider`。
+  - 基于 Moya 的网络封装（`APITarget`、`NetworkProvider` 等）。
 - `Core/Main/`
   - 根视图与导航入口（`MainView`、`ContentView`）。
 
-## 解析流程（业务逻辑）
+## 使用指南
 
-1. 选择或拖拽 Logan 日志文件，得到文件 `URL`。
-2. `LoganParserService.parseLogFile(at:)`：
-   - 读取文件数据，初始化进度。
-   - 扫描标识符并分块读取加密内容长度与数据。
-   - 使用 AES/CBC 解密（Key/IV 来自设置模块）。
-   - 使用 GZIP 解压（优先 GzipSwift，失败回退手动解压）。
-   - 将解密解压后的文本按行解析为 `LoganLogItem`，并统计成功/失败块数。
-   - 导出 JSON 文件，落盘后记录 `ParseHistory`。
-3. UI 层显示解析进度与结果列表，支持筛选与查看详情。
-
-## 界面与交互
-
-- `LogParserView`：主解析入口，提供文件选择、进度展示与解析结果列表。
-- `LogDetailView`：查看单条日志详情（含类型、时间、线程、内容等）。
-- `HistoryView`：解析历史记录列表，支持查看历史导出的 JSON 文件。
-- `SettingsContentView`：配置 AES Key/IV，并提供字段校验。
-
-## 使用步骤
-
-1. 启动应用后，进入 `设置` 页面配置 AES Key 与 IV（必须为 16 字符）。
-2. 返回解析页，选择 Logan 文件进行解析，等待进度至 100%。
-3. 解析完成后，可在列表中浏览日志；如需外部分析，可点击导出后的 JSON 文件。
-4. 历史页面可查看过往解析记录（含成功/失败、条数、导出路径等）。
+1. 进入「设置」配置 AES Key 与 IV（均需 16 字符）。
+2. 在解析页选择或拖拽 Logan 文件。
+3. 查看解析进度与结果列表；可按类型筛选并查看详情。
+4. 如需外部分析，使用导出按钮生成 JSON 并在历史中查看路径。
 
 ## 构建与运行
 
-- Xcode 15+，macOS 14+（建议与项目配置一致）。
-- 打开 `SwiftLogParser.xcodeproj`，选择 `SwiftLogParser` 目标，直接运行。
-- 依赖：`Moya`、`Alamofire`、`Gzip`、`ZIPFoundation`（通过 SwiftPM 管理）。
+- 打开 `SwiftLogParser.xcodeproj`，选择 `SwiftLogParser` 目标运行。
+- 依赖：`Moya`、`Alamofire`、`Gzip`、`ZIPFoundation`（SwiftPM 管理）。
+- 若使用脚本构建，可参考根目录 `build.sh`（按需调整 Xcode 版本）。
 
-## 配置项（Network 与解析设置）
+## 配置说明
 
-- 应用启动全局网络配置（示例，中文注释）：
+- 网络：在应用启动时配置全局网络参数（可选）。
 ```swift
 // App 启动时配置全局网络参数
 Network.sharedConfig = NetworkConfig(
-    baseURL: URL(string: "https://api.example.com")!, // 基础域名
+    baseURL: URL(string: "https://api.example.com")!,
     globalHeadersProvider: { [
-        "Accept": "application/json",            // 默认接收类型
-        "Authorization": "Bearer YOUR_TOKEN"     // 按需动态注入
+        "Accept": "application/json",
+        "Authorization": "Bearer YOUR_TOKEN"
     ] },
-    timeout: 20,            // 请求与资源超时（秒）
-    isLoggingEnabled: true  // 开启网络日志
+    timeout: 20,
+    isLoggingEnabled: true
 )
 ```
 
 - 解析设置（AES Key/IV）：
-  - 在 `设置` 页面修改后会持久化，`LoganParserService` 解析时读取。
-  - 必须满足 16 字节长度，否则 `isValid` 失败。
+  - 在「设置」页面修改后会持久化，解析时自动读取。
+  - 必须均为 16 字节长度，否则校验失败。
 
-## 多环境与扩展
+## 解析流程（概览）
 
-- 建议在 `App.init()` 中根据编译配置或环境变量切换 `baseURL`。
-- `APITarget` 可继续按需扩展 `path`、`method`、`task`、`headers`。
-- 日志分类来自 `LogType`，如需新增类型可扩展枚举与图标/颜色映射。
+1. 选择或拖拽 Logan 日志文件，得到文件 `URL`。
+2. `LoganParserService.parseLogFile(at:)` 执行：
+   - 读取数据并初始化进度。
+   - 扫描标识符，分块读取密文长度与数据。
+   - 使用 AES/CBC 解密（Key/IV 来源于设置）。
+   - 使用 GZIP 解压（失败自动回退）。
+   - 解析为结构化模型，统计成功/失败块数并导出 JSON。
+3. UI 展示进度与结果列表，支持筛选、详情与历史查看。
+
+## 多环境与扩展建议
+
+- 在 `App.init()` 或构建配置中切换 `baseURL`。
+- `APITarget` 可扩展 `path`、`method`、`task`、`headers`。
+- 新增日志类型时扩展 `LogType` 及其图标/颜色映射。
 
 ## 常见问题（FAQ）
 
 - 解密失败怎么办？
-  - 请确认 AES Key/IV 是否与生成 Logan 的 App 完全一致且为 16 字节。
+  - 确认 AES Key/IV 与产生日志的 App 完全一致，且均为 16 字节。
 - 解压失败怎么办？
-  - 检查源文件是否为合法的 GZIP；工具已内置回退解压路径与统计信息。
-- JSON 导出后在哪里？
-  - 解析成功后会在历史记录中显示导出的 JSON 文件路径，可直接打开。
+  - 检查源文件是否为合法 GZIP；本工具存在回退解压与统计提示。
+- JSON 导出文件在哪里？
+  - 历史记录中会显示导出的 JSON 路径，可直接打开查看。
 
 ## 许可证
 
 本项目遵循 MIT 许可证，详见 `LICENSE` 文件。
+
+## 致谢
+
+- Logan 日志格式及相关生态。
+- 社区提供的 Swift/SwiftUI 与压缩/加密库。
