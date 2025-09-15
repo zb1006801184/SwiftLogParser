@@ -1,6 +1,15 @@
 {
-  "originHash" : "17b76cb037a612fa0d6c0211d68869f7aa61dd4e8009c77517128a778f42ee06",
+  "originHash" : "63d5ac741fe7b9d7a40c2fcdd012d5787bff43ea105be0891b4f624c1ecd784b",
   "pins" : [
+    {
+      "identity" : "alamofire",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Alamofire/Alamofire.git",
+      "state" : {
+        "revision" : "513364f870f6bfc468f9d2ff0a95caccc10044c5",
+        "version" : "5.10.2"
+      }
+    },
     {
       "identity" : "gzipswift",
       "kind" : "remoteSourceControl",
@@ -11,21 +20,30 @@
       }
     },
     {
-      "identity" : "swiftuix",
+      "identity" : "moya",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/SwiftUIX/SwiftUIX.git",
+      "location" : "https://github.com/Moya/Moya.git",
       "state" : {
-        "revision" : "d9f903b214b9d56e3c1e4533b03359aee94acd5d",
-        "version" : "0.2.4"
+        "revision" : "c263811c1f3dbf002be9bd83107f7cdc38992b26",
+        "version" : "15.0.3"
       }
     },
     {
-      "identity" : "zipfoundation",
+      "identity" : "reactiveswift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/weichsel/ZIPFoundation.git",
+      "location" : "https://github.com/ReactiveCocoa/ReactiveSwift.git",
       "state" : {
-        "revision" : "02b6abe5f6eef7e3cbd5f247c5cc24e246efcfe0",
-        "version" : "0.9.19"
+        "revision" : "c43bae3dac73fdd3cb906bd5a1914686ca71ed3c",
+        "version" : "6.7.0"
+      }
+    },
+    {
+      "identity" : "rxswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ReactiveX/RxSwift.git",
+      "state" : {
+        "revision" : "5dd1907d64f0d36f158f61a466bab75067224893",
+        "version" : "6.9.0"
       }
     }
   ],
