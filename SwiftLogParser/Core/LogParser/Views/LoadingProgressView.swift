@@ -14,47 +14,63 @@ struct LoadingProgressView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // 动画图标
-            Image(systemName: "gearshape.2")
-                .font(.system(size: 60))
-                .foregroundColor(.blue)
-                .rotationEffect(.degrees(progress * 360))
-                .animation(.linear(duration: 2).repeatForever(autoreverses: false), 
-                          value: progress)
-            
-            VStack(spacing: 12) {
-                Text("正在解析日志文件...")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                if let fileName = fileName {
-                    Text(fileName)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
-            
-            VStack(spacing: 8) {
-                // 进度条
-                ProgressView(value: progress, total: 1.0)
-                    .progressViewStyle(LinearProgressViewStyle())
-                    .frame(width: 300)
-                
-                // 进度百分比
-                Text("\(Int(progress * 100))%")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            // 进度阶段提示
-            Text(progressMessage)
-                .font(.caption)
-                .foregroundColor(.secondary)
+            progressIcon
+            progressText
+            progressBar
+            progressStageText
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.controlBackgroundColor))
+    }
+    
+    // MARK: - 组件拆分
+    
+    /// 动画图标
+    private var progressIcon: some View {
+        Image(systemName: "gearshape.2")
+            .font(.system(size: 60))
+            .foregroundColor(.blue)
+            .rotationEffect(.degrees(progress * 360))
+            .animation(
+                .linear(duration: 2).repeatForever(autoreverses: false),
+                value: progress
+            )
+    }
+    
+    /// 标题与文件名
+    private var progressText: some View {
+        VStack(spacing: 12) {
+            Text("正在解析日志文件...")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            if let fileName = fileName {
+                Text(fileName)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+    }
+    
+    /// 进度条与百分比
+    private var progressBar: some View {
+        VStack(spacing: 8) {
+            ProgressView(value: progress, total: 1.0)
+                .progressViewStyle(LinearProgressViewStyle())
+                .frame(width: 300)
+            Text("\(Int(progress * 100))%")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    /// 阶段提示
+    private var progressStageText: some View {
+        Text(progressMessage)
+            .font(.caption)
+            .foregroundColor(.secondary)
     }
     
     /// 根据进度返回相应的提示信息

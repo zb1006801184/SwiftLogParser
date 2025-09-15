@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E6B034A52E6EABDE0098A158 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = E6B034A42E6EABDE0098A158 /* ZIPFoundation */; };
+		E6182ABF2E7806B800559E9A /* Moya in Frameworks */ = {isa = PBXBuildFile; productRef = E6182ABE2E7806B800559E9A /* Moya */; };
 		E6B034D92E6EDC9C0098A158 /* Gzip in Frameworks */ = {isa = PBXBuildFile; productRef = E6B034D82E6EDC9C0098A158 /* Gzip */; };
 /* End PBXBuildFile section */
 
@@ -58,7 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E6B034D92E6EDC9C0098A158 /* Gzip in Frameworks */,
-				E6B034A52E6EABDE0098A158 /* ZIPFoundation in Frameworks */,
+				E6182ABF2E7806B800559E9A /* Moya in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,8 +127,8 @@
 			);
 			name = SwiftLogParser;
 			packageProductDependencies = (
-				E6B034A42E6EABDE0098A158 /* ZIPFoundation */,
 				E6B034D82E6EDC9C0098A158 /* Gzip */,
+				E6182ABE2E7806B800559E9A /* Moya */,
 			);
 			productName = SwiftLogParser;
 			productReference = E611A6292E6AB97100FA5446 /* SwiftLogParser.app */;
@@ -213,8 +213,8 @@
 			mainGroup = E611A6202E6AB97100FA5446;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				E6B034A22E6EAA000098A158 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 				E6B034D72E6EDBBD0098A158 /* XCRemoteSwiftPackageReference "GzipSwift" */,
+				E6182ABD2E78068700559E9A /* XCRemoteSwiftPackageReference "Moya" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E611A62A2E6AB97100FA5446 /* Products */;
@@ -430,7 +430,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.SwiftLogParser;
+				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.LogParser;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -458,7 +458,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.SwiftLogParser;
+				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.LogParser;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -476,7 +476,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.SwiftLogParserTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.LogParserTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -494,7 +494,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.SwiftLogParserTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.LogParserTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -510,7 +510,7 @@
 				DEVELOPMENT_TEAM = 23X3L39LGH;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.SwiftLogParserUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.LogParserUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -526,7 +526,7 @@
 				DEVELOPMENT_TEAM = 23X3L39LGH;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.SwiftLogParserUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.log.parser.LogParserUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -576,12 +576,12 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		E6B034A22E6EAA000098A158 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+		E6182ABD2E78068700559E9A /* XCRemoteSwiftPackageReference "Moya" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			repositoryURL = "https://github.com/Moya/Moya.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.9.19;
+				minimumVersion = 15.0.3;
 			};
 		};
 		E6B034D72E6EDBBD0098A158 /* XCRemoteSwiftPackageReference "GzipSwift" */ = {
@@ -595,10 +595,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		E6B034A42E6EABDE0098A158 /* ZIPFoundation */ = {
+		E6182ABE2E7806B800559E9A /* Moya */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E6B034A22E6EAA000098A158 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
-			productName = ZIPFoundation;
+			package = E6182ABD2E78068700559E9A /* XCRemoteSwiftPackageReference "Moya" */;
+			productName = Moya;
 		};
 		E6B034D82E6EDC9C0098A158 /* Gzip */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -13,7 +13,7 @@ struct SettingsContentView: View {
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
                 // 头部标题区域
                 headerSection
                 
@@ -23,10 +23,10 @@ struct SettingsContentView: View {
                 // 底部按钮区域
                 bottomButtonsSection
             }
-            .padding(24)
+            .padding(DesignSystem.Spacing.xl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.windowBackgroundColor))
+        .background(DesignSystem.Colors.background)
         .alert("提示", isPresented: $viewModel.showAlert) {
             Button("确定") {}
         } message: {
@@ -34,61 +34,70 @@ struct SettingsContentView: View {
         }
     }
     
-    /// 头部标题区域
+    /// 头部标题区域 - 现代化设计
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 16) {
-                // 密钥图标
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                // 密钥图标 - 现代化设计
                 ZStack {
                     Circle()
-                        .fill(Color.blue.opacity(0.1))
-                        .frame(width: 48, height: 48)
+                        .fill(DesignSystem.Colors.primaryLight)
+                        .frame(width: 56, height: 56)
+                        .shadowSmall()
                     
                     Image(systemName: "key.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.blue)
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(DesignSystem.Colors.primary)
                 }
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text("密钥设置")
-                        .font(.title2)
+                        .font(DesignSystem.Typography.title2)
                         .fontWeight(.semibold)
+                        .foregroundColor(DesignSystem.Colors.textPrimary)
                     
                     Text("配置Logan日志解析密钥")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(DesignSystem.Typography.subheadline)
+                        .foregroundColor(DesignSystem.Colors.textSecondary)
                 }
                 
                 Spacer()
                 
-                // 使用默认按钮
+                // 使用默认按钮 - 现代化样式
                 Button("使用默认") {
                     viewModel.resetToDefault()
                 }
-                .font(.callout)
-                .foregroundColor(.orange)
+                .font(DesignSystem.Typography.callout.weight(.medium))
+                .foregroundColor(DesignSystem.Colors.warning)
                 .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal, DesignSystem.Spacing.md)
+                .padding(.vertical, DesignSystem.Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                        .fill(DesignSystem.Colors.warning.opacity(0.1))
+                )
             }
         }
     }
     
-    /// 加密配置区域
+    /// 加密配置区域 - 现代化设计
     private var encryptionSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
             // 加密密钥配置标题
-            HStack(spacing: 8) {
-                Image(systemName: "plus.circle.fill")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 16))
+            HStack(spacing: DesignSystem.Spacing.sm) {
+                Image(systemName: "lock.shield.fill")
+                    .foregroundColor(DesignSystem.Colors.primary)
+                    .font(.system(size: 18, weight: .medium))
                 
                 Text("加密密钥配置")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                    .font(DesignSystem.Typography.headline)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
                 
                 Spacer()
             }
             
             Divider()
+                .background(DesignSystem.Colors.border)
             
             // AES密钥输入
             aesKeyInputSection
@@ -99,166 +108,156 @@ struct SettingsContentView: View {
             // 提示信息
             infoNoticeSection
         }
-        .padding(20)
-        .background(Color.white)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .padding(DesignSystem.Spacing.lg)
+        .background(DesignSystem.Colors.surfaceElevated)
+        .largeCornerRadius()
+        .shadowMedium()
     }
     
-    /// AES密钥输入区域
+    
+    /// AES密钥输入区域 - 现代化设计
     private var aesKeyInputSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
             Text("AES密钥 (Key)")
-                .font(.subheadline)
+                .font(DesignSystem.Typography.subheadline)
                 .fontWeight(.medium)
+                .foregroundColor(DesignSystem.Colors.textPrimary)
             
-            HStack(spacing: 12) {
+            HStack(spacing: DesignSystem.Spacing.md) {
                 // 密钥图标
                 Image(systemName: "key")
-                    .foregroundColor(.secondary)
-                    .frame(width: 16)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                    .frame(width: 18)
                 
                 // 输入框
                 TextField("0123456789012345", text: $viewModel.aesKey)
                     .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(.body, design: .monospaced))
+                    .font(DesignSystem.Typography.code)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
                     .autocorrectionDisabled()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 300, height: 32)
+                    .onChange(of: viewModel.aesKey) { _, newValue in
+                        // 限制输入长度为16位
+                        if newValue.count > 16 {
+                            viewModel.aesKey = String(newValue.prefix(16))
+                        }
+                    }
                 
                 // 清除按钮
                 if !viewModel.aesKey.isEmpty {
                     Button(action: viewModel.clearKey) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                            .font(.system(size: 16))
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(12)
-            .background(Color(.controlBackgroundColor))
-            .cornerRadius(8)
+            .padding(DesignSystem.Spacing.md)
+            .background(DesignSystem.Colors.surface)
+            .standardCornerRadius()
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(.separatorColor), lineWidth: 1)
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                    .stroke(DesignSystem.Colors.border, lineWidth: 1)
             )
         }
     }
     
-    /// AES向量输入区域
+    /// AES向量输入区域 - 现代化设计
     private var aesIvInputSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
             Text("AES向量 (IV)")
-                .font(.subheadline)
+                .font(DesignSystem.Typography.subheadline)
                 .fontWeight(.medium)
+                .foregroundColor(DesignSystem.Colors.textPrimary)
             
-            HStack(spacing: 12) {
+            HStack(spacing: DesignSystem.Spacing.md) {
                 // 向量图标
                 Image(systemName: "shuffle")
-                    .foregroundColor(.secondary)
-                    .frame(width: 16)
+                    .foregroundColor(DesignSystem.Colors.textSecondary)
+                    .frame(width: 18)
                 
                 // 输入框
                 TextField("0123456789012345", text: $viewModel.aesIv)
                     .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(.body, design: .monospaced))
+                    .font(DesignSystem.Typography.code)
+                    .foregroundColor(DesignSystem.Colors.textPrimary)
                     .autocorrectionDisabled()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 300, height: 32)
+                    .onChange(of: viewModel.aesIv) { _, newValue in
+                        // 限制输入长度为16位
+                        if newValue.count > 16 {
+                            viewModel.aesIv = String(newValue.prefix(16))
+                        }
+                    }
                 
                 // 清除按钮
                 if !viewModel.aesIv.isEmpty {
                     Button(action: viewModel.clearIv) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(DesignSystem.Colors.textSecondary)
+                            .font(.system(size: 16))
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(12)
-            .background(Color(.controlBackgroundColor))
-            .cornerRadius(8)
+            .padding(DesignSystem.Spacing.md)
+            .background(DesignSystem.Colors.surface)
+            .standardCornerRadius()
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(.separatorColor), lineWidth: 1)
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                    .stroke(DesignSystem.Colors.border, lineWidth: 1)
             )
         }
     }
     
-    /// 信息提示区域
+    /// 信息提示区域 - 现代化设计
     private var infoNoticeSection: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DesignSystem.Spacing.md) {
             Image(systemName: "info.circle.fill")
-                .foregroundColor(.blue)
-                .font(.system(size: 16))
+                .foregroundColor(DesignSystem.Colors.info)
+                .font(.system(size: 18, weight: .medium))
             
             Text("密钥和向量都必须是16位字符。如果不设置将使用默认密钥。")
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(DesignSystem.Typography.caption)
+                .foregroundColor(DesignSystem.Colors.textSecondary)
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
             
             Spacer()
         }
-        .padding(12)
-        .background(Color.blue.opacity(0.08))
-        .cornerRadius(8)
+        .padding(DesignSystem.Spacing.md)
+        .background(DesignSystem.Colors.info.opacity(0.08))
+        .standardCornerRadius()
     }
     
-    /// 底部按钮区域
+    /// 底部按钮区域 - 现代化设计
     private var bottomButtonsSection: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DesignSystem.Spacing.md) {
             Spacer()
             
             // 重置为默认按钮
             Button("重置为默认") {
                 viewModel.resetToDefault()
             }
-            .buttonStyle(SecondaryButtonStyle())
+            .buttonStyle(.secondary)
             
             // 保存设置按钮
             Button("保存设置") {
                 viewModel.saveSettings()
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .buttonStyle(.primary)
         }
-        .padding(.top, 8)
+        .padding(.top, DesignSystem.Spacing.sm)
     }
 }
 
-/// 主要按钮样式
-struct PrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(.body, weight: .medium))
-            .foregroundColor(.white)
-            .frame(minWidth: 100, minHeight: 36)
-            .padding(.horizontal, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.blue)
-                    .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            )
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-    }
-}
-
-/// 次要按钮样式
-struct SecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(.body, weight: .medium))
-            .foregroundColor(.blue)
-            .frame(minWidth: 100, minHeight: 36)
-            .padding(.horizontal, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.blue, lineWidth: 1)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.white)
-                    )
-                    .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            )
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-    }
-}
 
 #Preview {
     SettingsContentView()
