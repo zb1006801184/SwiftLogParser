@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftUIX
 import UniformTypeIdentifiers
 
 /// 日志解析主内容视图 - 符合设计图的 macOS 风格

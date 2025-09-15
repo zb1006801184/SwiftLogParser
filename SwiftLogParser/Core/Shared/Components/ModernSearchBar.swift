@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftUIX
 
 /// 现代化搜索栏组件
 /// 提供美观的搜索界面，支持实时搜索和清除功能
@@ -36,18 +35,27 @@ struct ModernSearchBar: View {
                     .animation(DesignSystem.Animation.quick, value: isFocused)
             }
             
-            // 搜索输入框 - 使用SwiftUIX的现代化样式
+            // 搜索输入框 - 使用原生SwiftUI样式
             TextField(placeholder, text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(DesignSystem.Typography.body)
                 .foregroundColor(DesignSystem.Colors.textPrimary)
                 .focused($isTextFieldFocused)
+                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(height: 32)
                 .onSubmit {
                     onSearch()
                 }
                 .onChange(of: isTextFieldFocused) { _, focused in
                     withAnimation(DesignSystem.Animation.springBouncy) {
                         isFocused = focused
+                    }
+                }
+                .onChange(of: searchText) { _, newValue in
+                    // 限制搜索文本长度，避免过长的输入导致布局问题
+                    if newValue.count > 200 {
+                        searchText = String(newValue.prefix(200))
                     }
                 }
             
@@ -119,7 +127,7 @@ struct ModernSearchBar: View {
                     y: isFocused ? 6 : 4
                 )
         )
-        .scaleEffect(isFocused ? 1.02 : 1.0)
+        // 避免对包含原生 NSView 的容器做缩放动画，防止 PlatformTextFieldAdaptor 约束抖动
         .animation(DesignSystem.Animation.springBouncy, value: isFocused)
     }
     

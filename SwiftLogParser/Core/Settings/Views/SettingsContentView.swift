@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftUIX
 
 /// 设置内容视图
 struct SettingsContentView: View {
@@ -136,6 +135,15 @@ struct SettingsContentView: View {
                     .font(DesignSystem.Typography.code)
                     .foregroundColor(DesignSystem.Colors.textPrimary)
                     .autocorrectionDisabled()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 300, height: 32)
+                    .onChange(of: viewModel.aesKey) { _, newValue in
+                        // 限制输入长度为16位
+                        if newValue.count > 16 {
+                            viewModel.aesKey = String(newValue.prefix(16))
+                        }
+                    }
                 
                 // 清除按钮
                 if !viewModel.aesKey.isEmpty {
@@ -178,6 +186,15 @@ struct SettingsContentView: View {
                     .font(DesignSystem.Typography.code)
                     .foregroundColor(DesignSystem.Colors.textPrimary)
                     .autocorrectionDisabled()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 300, height: 32)
+                    .onChange(of: viewModel.aesIv) { _, newValue in
+                        // 限制输入长度为16位
+                        if newValue.count > 16 {
+                            viewModel.aesIv = String(newValue.prefix(16))
+                        }
+                    }
                 
                 // 清除按钮
                 if !viewModel.aesIv.isEmpty {

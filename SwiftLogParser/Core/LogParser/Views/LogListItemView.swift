@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftUIX
 
 /// 日志列表项视图 - 现代化设计
 /// 显示单个日志条目的简要信息，包含类型标识和现代化样式
