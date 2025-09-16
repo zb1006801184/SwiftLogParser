@@ -9,8 +9,11 @@ import SwiftUI
 
 /// 应用主视图 - macOS 风格布局
 struct MainView: View {
+    // 当前选中的侧边栏菜单项
     @State private var selectedSidebarItem: SidebarItem = .logParser
+    // 控制文件导入器和关于页面的显示
     @State private var showFileImporter = false
+    // 控制关于页面的显示
     @State private var showAbout = false
     
     var body: some View {
@@ -23,21 +26,25 @@ struct MainView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 1000, minHeight: 700)
+        // 监听文件选择通知，显示文件导入器
         .onReceive(NotificationCenter.default.publisher(
             for: .fileSelected
         )) { _ in
             showFileImporter = true
         }
+        // 监听历史更新通知，切换到历史页面
         .onReceive(NotificationCenter.default.publisher(
             for: .fileSelected
         )) { _ in
             showAbout = true
         }
+        // 监听导航到日志解析页面的通知
         .onReceive(NotificationCenter.default.publisher(
             for: .navigateToLogParser
         )) { _ in
             selectedSidebarItem = .logParser
         }
+        // 监听加载历史文件的通知，切换到历史页面
         .fileImporter(
             isPresented: $showFileImporter,
             allowedContentTypes: [.data],
@@ -104,10 +111,11 @@ struct SidebarView: View {
             ForEach(SidebarItem.allCases, id: \.self) { item in
                 SidebarItemRow(
                     item: item,
-                    isSelected: selectedItem == item
-                ) {
-                    selectedItem = item
-                }
+                    isSelected: selectedItem == item,
+                    action: {
+                        selectedItem = item
+                    }
+                )
             }
         }
         .padding(.top, 8)

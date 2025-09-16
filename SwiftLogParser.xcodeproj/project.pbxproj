@@ -580,16 +580,16 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Moya/Moya.git";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 15.0.3;
+				kind = exactVersion;
+				version = 15.0.3;
 			};
 		};
 		E6B034D72E6EDBBD0098A158 /* XCRemoteSwiftPackageReference "GzipSwift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/1024jp/GzipSwift";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 6.1.0;
+				kind = exactVersion;
+				version = 6.1.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
