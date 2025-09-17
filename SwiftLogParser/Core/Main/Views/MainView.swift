@@ -188,6 +188,11 @@ struct ContentAreaView: View {
                 .opacity(selectedItem == .settings ? 1 : 0)
                 .allowsHitTesting(selectedItem == .settings)
                 .zIndex(selectedItem == .settings ? 1 : 0)
+            
+            ServerLogParser()
+                .opacity(selectedItem == .serverLogParser ? 1 : 0)
+                .allowsHitTesting(selectedItem == .serverLogParser)
+                .zIndex(selectedItem == .serverLogParser ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -197,6 +202,7 @@ struct ContentAreaView: View {
 enum SidebarItem: String, CaseIterable {
     case logParser = "logParser"
     case history = "history"
+    case serverLogParser = "serverLogParser"
     case settings = "settings"
     
     var title: String {
@@ -207,6 +213,8 @@ enum SidebarItem: String, CaseIterable {
             return "解析历史"
         case .settings:
             return "设置"
+        case .serverLogParser:
+            return "服务端日志解析"
         }
     }
     
@@ -218,6 +226,8 @@ enum SidebarItem: String, CaseIterable {
             return "clock.arrow.circlepath"
         case .settings:
             return "gearshape"
+        case .serverLogParser:
+            return "server.rack"
         }
     }
 }
