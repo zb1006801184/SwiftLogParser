@@ -96,7 +96,6 @@ struct ServerLogParser: View {
                     time: "09:3\(idx % 10)",
                     summary: "这里是日志的简要内容，展示两行以内……"
                 )
-//                .listRowBackground(Color.clear)
             }
         }
         .listStyle(.plain)
