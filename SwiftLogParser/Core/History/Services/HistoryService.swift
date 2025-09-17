@@ -31,9 +31,11 @@ class HistoryService: HistoryServiceProtocol {
     
     /// 添加历史记录
     func addHistory(_ history: ParseHistory) {
-        histories.insert(history, at: 0) // 最新的记录在前面
+        histories.insert(history, at: 0)
         saveHistories()
-        NotificationCenter.default.post(name: .historyUpdated, object: nil)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .historyUpdated, object: nil)
+        }
     }
     
     /// 获取历史记录
