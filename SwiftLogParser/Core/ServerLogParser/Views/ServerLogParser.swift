@@ -14,6 +14,7 @@ struct ServerLogParser: View {
 
     var body: some View {
         VStack {
+            //顶部筛选、搜索栏
             _buildTopBar()
             Spacer()
             Text(viewModel.formatDateToYearMonthDay(viewModel.startTime))
@@ -25,7 +26,7 @@ struct ServerLogParser: View {
 
     //顶部筛选、搜索栏
     private func _buildTopBar() -> some View {
-        HStack {
+        HStack () {
             // 开始时间筛选按钮
             _buildTimeFilterButton(
               
@@ -57,7 +58,7 @@ struct ServerLogParser: View {
             selection: binding,
             displayedComponents: .date
         )
-        .datePickerStyle(.compact)
+        .labelsHidden()
     }
 
 }
