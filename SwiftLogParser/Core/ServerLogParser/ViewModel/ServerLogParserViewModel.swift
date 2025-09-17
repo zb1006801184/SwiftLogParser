@@ -32,6 +32,12 @@ class ServerLogParserViewModel: ObservableObject {
             break
         }
     }
+    
+    // 搜索关键字
+    func search() {
+        
+    }
+
 
     
     /// 格式化日期为 yyyy-MM-dd 字符串
