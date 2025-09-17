@@ -18,12 +18,10 @@ class ServerLogParserViewModel: ObservableObject {
     // 结束时间
     @Published var endTime: Date = Date()
     
-    
-    //时间选择
+    /// 时间选择
     /// 根据 index 设置开始或结束时间
     /// - Parameters:
     ///   - index: 0 表示开始时间，1 表示结束时间
-    ///   - date: 选中的日期
     func datePicker(index: Int) {
         switch index {
         case 0: break
