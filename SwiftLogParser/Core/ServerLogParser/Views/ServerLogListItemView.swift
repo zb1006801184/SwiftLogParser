@@ -15,6 +15,10 @@ struct ServerLogListItemView: View {
     let time: String
     /// 日志摘要
     let summary: String
+    /// 点击回调
+    var onTap: (() -> Void)? = nil
+    ///是否选中
+    var isSelected: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -32,7 +36,15 @@ struct ServerLogListItemView: View {
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .lineLimit(2)
-        }.padding()
+        }
+        .frame(maxWidth: .infinity,alignment: .leading)
+        .padding()
+        .contentShape(Rectangle())
+        .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+        .cornerRadius(8)
+        .onTapGesture {
+            onTap?()
+        }
     }
 }
 
@@ -40,7 +52,8 @@ struct ServerLogListItemView: View {
     ServerLogListItemView(
         title: "ERROR /api/logs",
         time: "10:21:33",
-        summary: "Null pointer exception at line 42 in Parser.swift"
+        summary: "Null pointer exception at line 42 in Parser.swift",
+        onTap: { print("tapped") }
     )
     .frame(maxWidth: .infinity, alignment: .leading)
 }

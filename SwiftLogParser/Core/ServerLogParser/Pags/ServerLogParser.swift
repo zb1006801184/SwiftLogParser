@@ -85,20 +85,35 @@ struct ServerLogParser: View {
             .cornerRadius(6)
             .buttonStyle(.plain)
     }
-    
+
     //日志列表（改为 List）
     private func _buildLogList() -> some View {
-       List {
-            // 示例数据：后续替换为 viewModel 的真实数据源
-            ForEach(0..<20000, id: \.self) { idx in
-                ServerLogListItemView(
-                    title: "日志 #\(idx)",
-                    time: "09:3\(idx % 10)",
-                    summary: "这里是日志的简要内容，展示两行以内……"
-                )
+        HStack {
+            //左侧列表
+            List {
+                ForEach(0..<20000, id: \.self) { idx in
+                    ServerLogListItemView(
+                        title: "日志 #\(idx)",
+                        time: "09:3\(idx % 10)",
+                        summary: "这里是日志的简要内容，展示两行以内……",
+                        onTap: {
+                            viewModel.selectItem(at: idx)
+                        },
+                        isSelected: viewModel.selectedIndex == idx
+                    )
+
+                }
             }
+            .listStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            //右侧详情（占位）
+            ServerLogParserDetailPage(
+                logContent:  "日志 #\(viewModel.selectedIndex ?? -1)"
+            )
+                .frame(maxWidth: .infinity)
+
         }
-        .listStyle(.plain)
     }
 
 }

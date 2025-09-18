@@ -8,8 +8,10 @@
 import SwiftUI
 
 struct ServerLogParserDetailPage: View {
+    var logContent: String = "暂无选中的日志"
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        Text("\(logContent)")
     }
 }
 
