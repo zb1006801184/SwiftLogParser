@@ -44,70 +44,71 @@ struct LogQueryView: View {
     // MARK: - 顶部查询栏
     
     private var queryBar: some View {
-        VStack(spacing: 12) {
-            // 第一行：ID输入和获取按钮
-            HStack(spacing: 12) {
-                Text("用户ID:")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                
-                TextField("请输入用户ID", text: $viewModel.userId)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 200)
-                
-                Button(action: {
-                    viewModel.fetchLogFiles()
-                }) {
-                    HStack(spacing: 6) {
-                        if viewModel.isLoading {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                                .frame(width: 16, height: 16)
-                        } else {
-                            Image(systemName: "arrow.down.circle.fill")
-                                .frame(width: 16, height: 16)
-                        }
-                        Text("获取")
-                    }
-                    .foregroundColor(.white)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.blue)
-                .cornerRadius(6)
-                .buttonStyle(.plain)
-                .disabled(viewModel.isLoading || viewModel.userId.isEmpty)
-                
-                Spacer()
-            }
+        HStack(spacing: 12) {
+            // 用户ID输入
+            Text("用户ID:")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
             
-            // 第二行：时间范围选择
-            HStack(spacing: 12) {
-                Text("时间范围:")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                
-                DatePicker(
-                    "开始时间",
-                    selection: $viewModel.startTime,
-                    displayedComponents: [.date]
-                )
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                
-                Text("至")
-                    .foregroundColor(.secondary)
-                
-                DatePicker(
-                    "结束时间",
-                    selection: $viewModel.endTime,
-                    displayedComponents: [.date]
-                )
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                
-                Spacer()
+            TextField("请输入用户ID", text: $viewModel.userId)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 150)
+            
+            Divider()
+                .frame(height: 24)
+            
+            // 时间范围选择
+            Text("时间范围:")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            DatePicker(
+                "开始时间",
+                selection: $viewModel.startTime,
+                displayedComponents: [.date]
+            )
+            .labelsHidden()
+            .datePickerStyle(.compact)
+            
+            Text("至")
+                .foregroundColor(.secondary)
+            
+            DatePicker(
+                "结束时间",
+                selection: $viewModel.endTime,
+                displayedComponents: [.date]
+            )
+            .labelsHidden()
+            .datePickerStyle(.compact)
+            
+            Divider()
+                .frame(height: 24)
+            
+            // 获取按钮
+            Button(action: {
+                viewModel.fetchLogFiles()
+            }) {
+                HStack(spacing: 6) {
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .frame(width: 16, height: 16)
+                    }
+                    Text("获取")
+                }
+                .foregroundColor(.white)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.blue)
+            .cornerRadius(6)
+            .buttonStyle(.plain)
+            .disabled(viewModel.isLoading || viewModel.userId.isEmpty)
+            
+            Spacer()
         }
         .padding(16)
         .background(Color(.controlBackgroundColor))
@@ -146,7 +147,10 @@ struct LogQueryView: View {
             Divider()
             
             // 文件列表
-            if viewModel.fileItems.isEmpty {
+            if viewModel.isLoading {
+                // 加载中显示加载提示
+                loadingStateView
+            } else if viewModel.fileItems.isEmpty {
                 emptyFileListView
             } else {
                 ScrollView {
@@ -169,21 +173,60 @@ struct LogQueryView: View {
         .background(Color(.controlBackgroundColor))
     }
     
+    // MARK: - 加载中状态视图
+    
+    private var loadingStateView: some View {
+        VStack(spacing: 20) {
+            // 加载动画
+            VStack(spacing: 12) {
+                ZStack {
+                    // 外层旋转圆环
+                    Circle()
+                        .stroke(Color.blue.opacity(0.3), lineWidth: 3)
+                        .frame(width: 60, height: 60)
+                    
+                    // 内层旋转圆环
+                    Circle()
+                        .trim(from: 0, to: 0.75)
+                        .stroke(Color.blue, lineWidth: 3)
+                        .frame(width: 60, height: 60)
+                        .rotationEffect(.degrees(loadingRotation))
+                        .animation(
+                            .linear(duration: 1.0)
+                            .repeatForever(autoreverses: false),
+                            value: loadingRotation
+                        )
+                }
+                
+                Text("正在查询日志文件...")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .onAppear {
+                loadingRotation = 360
+            }
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+    
+    @State private var loadingRotation: Double = 0
+
     private var emptyFileListView: some View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text.magnifyingglass")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary.opacity(0.5))
             
-            Text(viewModel.isLoading ? "正在加载..." : "请输入ID并点击获取")
+            Text("请输入ID并点击获取")
                 .font(.body)
                 .foregroundColor(.secondary)
             
-            if !viewModel.isLoading {
-                Text("获取文件列表后，点击任意条目可复制下载地址")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+            Text("获取文件列表后，点击任意条目可复制下载地址")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
