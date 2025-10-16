@@ -14,7 +14,7 @@ public struct NetworkConfig {
     public var plugins: [Any]
 
     public init(
-        baseURL: URL = URL(string: "https://example.com")!,
+        baseURL: URL = URL(string: "https://api.fancybox.ai")!,
         globalHeadersProvider: @escaping () -> [String: String] = { [:] },
         timeout: TimeInterval = 30,
         isLoggingEnabled: Bool = false,
@@ -30,7 +30,7 @@ public struct NetworkConfig {
     /// 默认配置：30s 超时，开启日志（可按需修改）
     public static var `default`: NetworkConfig {
         NetworkConfig(
-            baseURL: URL(string: "https://example.com")!,
+            baseURL: URL(string: "https://api.fancybox.ai")!,
             globalHeadersProvider: { [:] },
             timeout: 30,
             isLoggingEnabled: true,

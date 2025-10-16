@@ -193,6 +193,13 @@ struct ContentAreaView: View {
                 .opacity(selectedItem == .serverLogParser ? 1 : 0)
                 .allowsHitTesting(selectedItem == .serverLogParser)
                 .zIndex(selectedItem == .serverLogParser ? 1 : 0)
+            
+            #if canImport(Moya)
+            LogQueryView()
+                .opacity(selectedItem == .logQuery ? 1 : 0)
+                .allowsHitTesting(selectedItem == .logQuery)
+                .zIndex(selectedItem == .logQuery ? 1 : 0)
+            #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -203,6 +210,7 @@ enum SidebarItem: String, CaseIterable {
     case logParser = "logParser"
     case history = "history"
     case serverLogParser = "serverLogParser"
+    case logQuery = "logQuery"
     case settings = "settings"
     
     var title: String {
@@ -215,6 +223,8 @@ enum SidebarItem: String, CaseIterable {
             return "设置"
         case .serverLogParser:
             return "服务端日志解析"
+        case .logQuery:
+            return "日志查询"
         }
     }
     
@@ -228,6 +238,8 @@ enum SidebarItem: String, CaseIterable {
             return "gearshape"
         case .serverLogParser:
             return "server.rack"
+        case .logQuery:
+            return "cloud.fill"
         }
     }
 }

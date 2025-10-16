@@ -95,7 +95,7 @@ struct ServerLogParser: View {
                     ServerLogListItemView(
                         title: "日志 #\(idx)",
                         time: "09:3\(idx % 10)",
-                        summary: "这里是日志的简要内容，展示两行以内……",
+                        summary: "这里是日志的简要内容，展示两行以内",
                         onTap: {
                             viewModel.selectItem(at: idx)
                         },
